@@ -62,29 +62,27 @@
 ;(map! :map 'override "<f13>" #'doom/leader)
 ;(map! :map 'override "<Tools>" #'doom/leader)
 
-(defun my-localleader-alias ()
-  "Calls the current localleader"
-  (interactive)
-  (let ((prefix (if (evil-normal-state-p) doom-localleader-key doom-localleader-alt-key))
-        map)
-    (setq map (key-binding (kbd prefix)))
-    (when (keymapp map)
-      (set-transient-map map t)
-      (which-key--show-keymap prefix map))))
+(defun translate-to-leader (prompt)
+  (if (evil-normal-state-p)
+      (kbd doom-leader-key)
+      (kbd doom-leader-alt-key)))
+
+(defun translate-to-localleader (prompt)
+  (if (evil-normal-state-p)
+      (kbd doom-localleader-key)
+      (kbd doom-localleader-alt-key)))
 
 ;(map! :map 'override "<Launch6>" #'my-localleader-alias)
 
-(map! :map 'key-translation-map "<Tools>" (kbd "C-c"))
+(map! :map 'key-translation-map "<Tools>" #'translate-to-leader)
 ;;; In WSL, F13 is getting mapped to <Tools>
-(map! :map 'key-translation-map "<f13>" (kbd "C-c"))
+(map! :map 'key-translation-map "<f13>" #'translate-to-leader)
 
 (map! :map 'key-translation-map "<Launch5>" (kbd "M-o"))
 (map! :map 'key-translation-map "<f14>" (kbd "M-o"))
 
-(map! :map 'key-translation-map "<Launch6>" (kbd "C-c l"))
-(map! :map 'key-translation-map "<f15>" (kbd "C-c l"))
-
-(map! :map evil-normal-state-map "C-c l" #'my-localleader-alias)
+(map! :map 'key-translation-map "<Launch6>" #'translate-to-localleader)
+(map! :map 'key-translation-map "<f15>" #'translate-to-localleader)
 
 ; Created by Claude
 (defun my-evil-execute-in-normal-state ()
