@@ -236,7 +236,7 @@
   "ediff the current `init.el' with the example in doom-emacs-dir"
   (interactive)
   (ediff-files (concat doom-user-dir "init.el")
-               (concat doom-emacs-dir "templates/init.example.el")))
+               (concat doom-emacs-dir "static/init.example.el")))
 
 (define-key! help-map
   "di"   #'doom/ediff-init-and-example
@@ -303,7 +303,8 @@
 )
 
 (defun my/ediff-setup-windows-plain (buf-A buf-B buf-C control-buffer)
-  (if (and ediff-show-ancestor with-Ancestor-p)
+  (if (and ediff-show-ancestor (with-current-buffer control-buffer
+                                 ediff-merge-with-ancestor-job)) ; with-Ancestor-p)
       (my/ediff-setup-windows-plain-merge-baseleft buf-A buf-B buf-C control-buffer)
       (ediff-setup-windows-plain buf-A buf-B buf-C control-buffer)))
 
