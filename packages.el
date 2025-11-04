@@ -59,3 +59,6 @@
 (package! google-c-style)
 
 (package! speedrect)
+
+; Seems like a cool package to keep in mind for creating one-off keymaps
+(package! hercules)
