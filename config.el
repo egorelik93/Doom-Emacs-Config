@@ -62,6 +62,18 @@
 ;(map! :map 'override "<f13>" #'doom/leader)
 ;(map! :map 'override "<Tools>" #'doom/leader)
 
+(defun my-localleader-alias ()
+  "Calls the current localleader"
+  (interactive)
+  (let ((prefix (if (evil-normal-state-p) doom-localleader-key doom-localleader-alt-key))
+        map)
+    (setq map (key-binding (kbd prefix)))
+    (when (keymapp map)
+      (set-transient-map map t)
+      (which-key--show-keymap prefix map))))
+
+;(map! :map 'override "<Launch6>" #'my-localleader-alias)
+
 (map! :map 'key-translation-map "<Tools>" (kbd "C-c"))
 ;;; In WSL, F13 is getting mapped to <Tools>
 (map! :map 'key-translation-map "<f13>" (kbd "C-c"))
@@ -71,6 +83,8 @@
 
 (map! :map 'key-translation-map "<Launch6>" (kbd "C-c l"))
 (map! :map 'key-translation-map "<f15>" (kbd "C-c l"))
+
+(map! :map evil-normal-state-map "C-c l" #'my-localleader-alias)
 
 ; Created by Claude
 (defun my-evil-execute-in-normal-state ()
