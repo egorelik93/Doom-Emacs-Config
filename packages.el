@@ -62,3 +62,5 @@
 
 ; Seems like a cool package to keep in mind for creating one-off keymaps
 (package! hercules)
+
+(package! eldoc-box)

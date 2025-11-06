@@ -242,12 +242,136 @@
   "di"   #'doom/ediff-init-and-example
   )
 
-(map! :e "C-<tab>" #'company-complete
-      :i "C-<tab>" #'company-complete
-      :e "C-." #'company-complete
-      :i "C-." #'company-complete)
+(after! company
+  (map! :e "C-<tab>" #'company-complete
+        :i "C-<tab>" #'company-complete
+        :e "C-." #'company-complete
+        :i "C-." #'company-complete))
 
-(map! "<f12>" #'lsp-describe-thing-at-point)
+(after! corfu
+  (map! :e "C-<tab>" #'completion-at-point
+        :i "C-<tab>" #'completion-at-point
+        :e "C-." #'completion-at-point
+        :i "C-." #'completion-all-completions)
+  (setq corfu-max-width 80)
+
+  (setq corfu-preselect 'first)
+  (setq +corfu-want-ret-to-confirm t))
+
+(after! lsp-mode
+  ; lsp-ui-doc has issues for me on wslg
+  (setq lsp-ui-doc-enable nil)
+
+  (setq lsp-ui-doc-include-signature t)
+
+  (setq lsp-ui-doc-show-with-mouse nil)
+  (setq lsp-ui-doc-use-childframe t)
+  (setq lsp-ui-doc-use-webkit nil)
+
+  (setq lsp-ui-doc-alignment 'window)
+
+  (setq lsp-ui-doc-position 'at-point)
+  (setq lsp-ui-doc-border (face-foreground 'default))
+
+  ; Using eldoc-box instead
+  (use-package! eldoc-box)
+  (global-eldoc-mode +1)
+
+  (setq lsp-eldoc-enable-hover t)
+  (setq lsp-signature-auto-activate t)
+  (setq lsp-signature-render-documentation t)
+  (setq lsp-eldoc-render-all t)
+
+  ;; Eldoc displays in echo area/minibuffer by default
+  ;; This gives you the quick, non-intrusive help
+  (setq eldoc-echo-area-use-multiline-p 1)  ; Allow multiple lines in echo
+  (setq eldoc-echo-area-prefer-doc-buffer nil)  ; Keep it in echo area
+
+  (setq eldoc-documentation-strategy #'eldoc-documentation-compose)
+
+  (setq eldoc-box-clear-with-C-g t)
+  (setq eldoc-box-only-multi-line t)
+  (setq eldoc-box-self-insert-command-list)
+
+  ;(map! "<f12>" #'lsp-ui-doc-glance)
+  (map! "<f12>" #'eldoc-box-help-at-point)
+  (map! "S-<f12>" #'lsp-describe-thing-at-point)
+
+  (setq lsp-inlay-hint-enable t)
+  ; Will get turned on later; see below.
+  (setq lsp-lens-enable nil)
+  ;(add-hook! 'lsp-mode-hook #'lsp-inlay-hints-mode)
+  (custom-set-faces!
+    '(lsp-inlay-hint-face :foreground "dim gray" :height 0.9 :slant italic))
+
+  (setq lsp-headerline-breadcrumb-enable nil)
+
+  (setq lsp-idle-delay 0.6)
+
+  (setq lsp-response-timeout 30)
+  (setq lsp-enable-file-watchers nil)
+
+  (setq lsp-log-io nil)
+
+
+  (defvar my-lsp-startup-time nil)
+
+  (add-hook! 'lsp-before-initialize-hook (setq my-lsp-startup-time (current-time)))
+
+  (advice-add 'lsp--error :around
+              (lambda (orig-fn msg &rest args)
+                (when (or (not my-lsp-startup-time)
+                          (> (float-time (time-subtract (current-time) my-lsp-startup-time)) 5))
+                  (apply orig-fn msg args))))
+
+  (add-hook! 'lsp-before-initialize-hook (run-with-idle-timer
+                            2 nil
+                            (lambda ()
+                                (setq lsp-inlay-hint-enable t)
+                                (setq lsp-lens-enable t)
+                                (lsp-inlay-hints-mode)
+                                (lsp-lens-mode))))
+
+  (defun lsp-booster--advice-json-parse (old-fn &rest args)
+    "Try to parse bytecode instead of json."
+    (or
+     (when (equal (following-char) ?#)
+       (let ((bytecode (read (current-buffer))))
+         (when (byte-code-function-p bytecode)
+           (funcall bytecode))))
+     (apply old-fn args)))
+  (advice-add (if (progn (require 'json)
+                         (fboundp 'json-parse-buffer))
+                  'json-parse-buffer
+                'json-read)
+              :around
+              #'lsp-booster--advice-json-parse)
+
+  (defun lsp-booster--advice-final-command (old-fn cmd &optional test?)
+    "Prepend emacs-lsp-booster command to lsp CMD."
+    (let ((orig-result (funcall old-fn cmd test?)))
+      (if (and (not test?)                             ;; for check lsp-server-present?
+               (not (file-remote-p default-directory)) ;; see lsp-resolve-final-command, it would add extra shell wrapper
+               lsp-use-plists
+               (not (functionp 'json-rpc-connection))  ;; native json-rpc
+               (executable-find "emacs-lsp-booster"))
+          (progn
+            (when-let ((command-from-exec-path (executable-find (car orig-result))))  ;; resolve command from exec-path (in case not found in $PATH)
+              (setcar orig-result command-from-exec-path))
+            (message "Using emacs-lsp-booster for %s!" orig-result)
+            (cons "emacs-lsp-booster" orig-result))
+        orig-result)))
+  (advice-add 'lsp-resolve-final-command :around #'lsp-booster--advice-final-command)
+  )
+
+(after! eglot
+  (setq eldoc-echo-area-use-multiline-p t)
+  (setq eldoc-documentation-strategy #'eldoc-documentation-compose))
+
+(use-package! eldoc-box
+  :after eglot
+  :config
+  (map! "<f12>" #'eldoc-box-help-at-point))
 
 (setq select-active-regions nil)
 
