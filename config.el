@@ -157,31 +157,6 @@
 (defvar my-prompt-on-exit t)
 (defvar my-popup-on-exit nil)
 
-;(add-hook! 'save-buffers-kill-emacs-hook (progn (setq my-prompt-on-exit t) t))
-;(add-hook! 'kill-emacs-query-functions (progn (setq my-prompt-on-exit t) t))
-
-(defun minibuffer-frame-p (frame)
-  (and (framep frame)
-       (eq (frame-parameter frame 'minibuffer) t)
-       (= (length (window-list frame)) 1)))
-
-(defun my-detect-gui-close (frame &rest _)
-  (when (and (eq (length (seq-filter (lambda (f)
-                                       (and f
-                                            (framep f)
-                                            (frame-visible-p f)
-                                            (not (minibuffer-frame-p f))))
-                                     (frame-list))) 1)
-             frame
-             ;(framep frame)
-             ;(frame-visible-p frame)
-             (not (minibuffer-frame-p frame)))
-    (setq my-prompt-on-exit nil)
-    (message "Deleting frame")))
-
-; This is not working well
-;(advice-add 'handle-delete-frame :before #'my-detect-gui-close)
-
 (defun my-quit-p (&optional prompt)
   "Do not prompt the user for confirmation when killing Emacs.
 
@@ -208,7 +183,19 @@ are open."
                        'face '(italic default))
            "Really quit Emacs?")))
 
-(defun my-noask-quit (&rest _)
+(setq confirm-kill-emacs #'my-quit-fn)
+
+(when (eq confirm-kill-emacs #'my-quit-fn)
+  (advice-add 'handle-delete-frame :around
+            (lambda (orig-fn event &rest args)
+              (setq my-prompt-on-exit nil)
+              (unwind-protect
+                  (apply orig-fn event args)
+                (setq my-prompt-on-exit t)
+                )
+              )))
+
+(defun my-noask-quit-message (&rest _)
   (interactive)
   (message (format "%s"
            (propertize (nth (random (length +doom-quit-messages))
@@ -216,9 +203,8 @@ are open."
                        'face '(italic default))))
   t)
 
-(setq confirm-kill-emacs nil)
-
-(add-hook! kill-emacs-query-functions #'my-noask-quit)
+(when (not confirm-kill-emacs)
+  (add-hook! kill-emacs-query-functions #'my-noask-quit-message))
 
 (use-package! ligature
   :load-path "path-to-ligature-repo"
