@@ -153,6 +153,73 @@
     (speedrect-mode)
   )
 
+
+(defvar my-prompt-on-exit t)
+(defvar my-popup-on-exit nil)
+
+;(add-hook! 'save-buffers-kill-emacs-hook (progn (setq my-prompt-on-exit t) t))
+;(add-hook! 'kill-emacs-query-functions (progn (setq my-prompt-on-exit t) t))
+
+(defun minibuffer-frame-p (frame)
+  (and (framep frame)
+       (eq (frame-parameter frame 'minibuffer) t)
+       (= (length (window-list frame)) 1)))
+
+(defun my-detect-gui-close (frame &rest _)
+  (when (and (eq (length (seq-filter (lambda (f)
+                                       (and f
+                                            (framep f)
+                                            (frame-visible-p f)
+                                            (not (minibuffer-frame-p f))))
+                                     (frame-list))) 1)
+             frame
+             ;(framep frame)
+             ;(frame-visible-p frame)
+             (not (minibuffer-frame-p frame)))
+    (setq my-prompt-on-exit nil)
+    (message "Deleting frame")))
+
+; This is not working well
+;(advice-add 'handle-delete-frame :before #'my-detect-gui-close)
+
+(defun my-quit-p (&optional prompt)
+  "Do not prompt the user for confirmation when killing Emacs.
+
+Returns t if it is safe to kill this session. Does not prompt if no real buffers
+are open."
+  (interactive "P")
+  (or (not (ignore-errors (doom-real-buffer-list)))
+      (if my-prompt-on-exit
+          (yes-or-no-p (format "%s" (or prompt "Really quit Emacs?")))
+          (if (or use-dialog-box my-popup-on-exit)
+              (x-popup-dialog
+               t `("Really quit Emacs?"
+                   ("Yes" . t)
+                   ("Cancel" . nil)))
+            t))
+      (ignore (message "Aborted"))))
+
+(defun my-quit-fn (&rest _)
+  (interactive)
+  (my-quit-p
+   (format "%s  %s"
+           (propertize (nth (random (length +doom-quit-messages))
+                            +doom-quit-messages)
+                       'face '(italic default))
+           "Really quit Emacs?")))
+
+(defun my-noask-quit (&rest _)
+  (interactive)
+  (message (format "%s"
+           (propertize (nth (random (length +doom-quit-messages))
+                            +doom-quit-messages)
+                       'face '(italic default))))
+  t)
+
+(setq confirm-kill-emacs nil)
+
+(add-hook! kill-emacs-query-functions #'my-noask-quit)
+
 (use-package! ligature
   :load-path "path-to-ligature-repo"
   :config
@@ -227,8 +294,9 @@
 (load! (let ((coding-system-for-read 'utf-8))
          (shell-command-to-string "agda-mode locate")))
 
-(setq evil-disable-insert-state-bindings 't)
-(setq evil-default-state 'emacs)
+(after! evil
+  (setq evil-disable-insert-state-bindings 't)
+  (setq evil-default-state 'emacs))
 
 (after! dired (remove-hook 'dired-mode-hook 'dired-omit-mode))
 
@@ -255,11 +323,12 @@
         :i "C-." #'completion-all-completions)
   (setq corfu-max-width 80)
 
-  (setq corfu-preselect 'first)
-  (setq +corfu-want-ret-to-confirm t))
+  (setq corfu-preselect 'directory)
+  (setq +corfu-want-ret-to-confirm 'minibuffer))
 
 (after! lsp-mode
-  ; lsp-ui-doc has issues for me on wslg
+  ; lsp-ui-doc has issues for me on wslg.
+  ; Using eldoc-box instead; see below for that config
   (setq lsp-ui-doc-enable nil)
 
   (setq lsp-ui-doc-include-signature t)
@@ -273,38 +342,39 @@
   (setq lsp-ui-doc-position 'at-point)
   (setq lsp-ui-doc-border (face-foreground 'default))
 
-  ; Using eldoc-box instead
-  (use-package! eldoc-box)
-  (global-eldoc-mode +1)
-
   (setq lsp-eldoc-enable-hover t)
   (setq lsp-signature-auto-activate t)
   (setq lsp-signature-render-documentation t)
   (setq lsp-eldoc-render-all t)
 
-  ;; Eldoc displays in echo area/minibuffer by default
-  ;; This gives you the quick, non-intrusive help
-  (setq eldoc-echo-area-use-multiline-p 1)  ; Allow multiple lines in echo
-  (setq eldoc-echo-area-prefer-doc-buffer nil)  ; Keep it in echo area
+  (setq lsp-headerline-breadcrumb-enable t)
+  (setq lsp-ui-sideline-enable t)
+  (setq lsp-ui-sideline-show-code-actions t)
+  (setq lsp-ui-sideline-enable t)
+  (setq lsp-ui-sideline-show-hover nil)
+  (setq lsp-modeline-code-actions-enable t)
+  (setq lsp-ui-sideline-enable t)
+  (setq lsp-ui-sideline-show-diagnostics t)
+  (setq lsp-modeline-diagnostics-enable t)
+  (setq lsp-completion-show-detail t)
+  (setq lsp-completion-show-kind t)
 
-  (setq eldoc-documentation-strategy #'eldoc-documentation-compose)
+  ; If I were going to keep this menu onscreen always, this is what I would set the width to.
+  ; But, I'd rather have a code map I sometimes can call up.
+  ; Not sure if lsp-ui-imenu is the best means for that.
+  ; (setq lsp-ui-imenu-window-width 25)
 
-  (setq eldoc-box-clear-with-C-g t)
-  (setq eldoc-box-only-multi-line t)
-  (setq eldoc-box-self-insert-command-list)
+  ; Supposedly slow, but sometimes useful. No indicator though.
+  (setq lsp-enable-folding nil)
 
   ;(map! "<f12>" #'lsp-ui-doc-glance)
   (map! "<f12>" #'eldoc-box-help-at-point)
   (map! "S-<f12>" #'lsp-describe-thing-at-point)
 
   (setq lsp-inlay-hint-enable t)
-  ; Will get turned on later; see below.
-  (setq lsp-lens-enable nil)
-  ;(add-hook! 'lsp-mode-hook #'lsp-inlay-hints-mode)
+  (setq lsp-lens-enable t)
   (custom-set-faces!
     '(lsp-inlay-hint-face :foreground "dim gray" :height 0.9 :slant italic))
-
-  (setq lsp-headerline-breadcrumb-enable nil)
 
   (setq lsp-idle-delay 0.6)
 
@@ -313,6 +383,9 @@
 
   (setq lsp-log-io nil)
 
+  ; Doubt we still need this
+  (setq lsp-debounce-full-sync-notifications-interval 2.0)
+
 
   (defvar my-lsp-startup-time nil)
 
@@ -320,17 +393,20 @@
 
   (advice-add 'lsp--error :around
               (lambda (orig-fn msg &rest args)
-                (when (or (not my-lsp-startup-time)
-                          (> (float-time (time-subtract (current-time) my-lsp-startup-time)) 5))
+                (unless (and my-lsp-startup-time
+                             (<= (float-time (time-subtract (current-time) my-lsp-startup-time)) 5))
                   (apply orig-fn msg args))))
 
-  (add-hook! 'lsp-before-initialize-hook (run-with-idle-timer
-                            2 nil
-                            (lambda ()
-                                (setq lsp-inlay-hint-enable t)
-                                (setq lsp-lens-enable t)
-                                (lsp-inlay-hints-mode)
-                                (lsp-lens-mode))))
+  ; In this function and its peers, the core message is actually the first element of args,
+  ; but in lsp--message it becomes the second element.
+  ; Note that info, warn, and error have green, yellow, and red faces respectively.
+  (advice-add 'lsp--warn :around
+              (lambda (orig-fn format-string &rest args)
+                (unless (and (>= (length args) 1)
+                              (let ((s (seq-elt args 0)))
+                                (and s (stringp s)
+                                     (string-match-p "content modified" s))))
+                  (apply orig-fn format-string args))))
 
   (defun lsp-booster--advice-json-parse (old-fn &rest args)
     "Try to parse bytecode instead of json."
@@ -365,13 +441,26 @@
   )
 
 (after! eglot
-  (setq eldoc-echo-area-use-multiline-p t)
-  (setq eldoc-documentation-strategy #'eldoc-documentation-compose))
+  (map! "<f12>" #'eldoc-box-help-at-point))
 
 (use-package! eldoc-box
-  :after eglot
+  :after (:any lsp-mode eglot)
   :config
-  (map! "<f12>" #'eldoc-box-help-at-point))
+  (global-eldoc-mode +1)
+
+  ;; Eldoc displays in echo area/minibuffer by default
+  ;; This gives you the quick, non-intrusive help
+  (setq eldoc-echo-area-use-multiline-p 1)  ; Allow multiple lines in echo
+  (setq eldoc-echo-area-prefer-doc-buffer nil)  ; Keep it in echo area
+
+  (setq eldoc-documentation-strategy #'eldoc-documentation-compose)
+
+  (setq eldoc-box-clear-with-C-g t)
+  (setq eldoc-box-only-multi-line t)
+
+  (custom-set-faces!
+    `(eldoc-box-border :background ,(face-foreground 'default)))
+)
 
 (setq select-active-regions nil)
 
