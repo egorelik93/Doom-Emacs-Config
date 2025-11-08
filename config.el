@@ -683,3 +683,25 @@ are open."
   )
 
 (setq org-return-follows-link t)
+
+(setq which-key-show-transient-maps t)
+
+(setq which-key-paging-prefixes '(
+                                  "C-x"
+                                  "C-x r"
+                                  "C-x t"
+                                  "C-x v"
+                                  "C-x w"
+                                  "C-h"))
+
+(after! which-key
+  ; Almost the same as above + which-key-paging-key, but works with leader key.
+  ; It does however require which-key-paging-key to already be set, and thus depends
+  ; on which-key already being loaded.
+  (defun map-which-key-paging-leader-prefixes (keys)
+    (seq-doseq (key keys)
+      (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
+        (map! :leader :map 'which-key-mode-map chord #'which-key-C-h-dispatch))))
+
+  (map-which-key-paging-leader-prefixes '("" "h" "p" "w"))
+)
