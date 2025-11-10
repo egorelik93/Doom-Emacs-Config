@@ -33,7 +33,11 @@
 ;(setq doom-theme 'ef-owl)
 (setq doom-theme 'catppuccin)
 
-(setq catppuccin-flavor 'frappe)
+(setq catppuccin-flavor 'macchiato)
+(defun set-catppuccin-flavor-and-reload (flavor)
+  (interactive "MOne of latte, frappe, macchiato, or mocha: ")
+  (setq catppuccin-flavor (intern flavor))
+  (catppuccin-reload))
 
 (use-package! ef-themes
   :init
@@ -755,3 +759,9 @@ are open."
                   (unless (eq current-evil-state evil-state))
                       (evil-change-state current-evil-state))))
   )
+
+(after! cc-mode
+  ; Resolve tree-sitter bugs
+  (add-to-list 'major-mode-remap-alist '(c-mode . nil))
+  (add-to-list 'major-mode-remap-alist '(c++-mode . nil))
+  (add-to-list 'major-mode-remap-alist '(c-or-c++-mode . nil)))
