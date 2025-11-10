@@ -27,7 +27,25 @@
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
-(setq doom-theme 'doom-one)
+;(setq doom-theme 'doom-one)
+
+;(setq doom-theme 'my-doom-oceanic-next)
+;(setq doom-theme 'ef-owl)
+(setq doom-theme 'catppuccin)
+
+(setq catppuccin-flavor 'frappe)
+
+(use-package! ef-themes
+  :init
+  ;(ef-themes-take-over-modus-themes-mode 1)
+  (modus-themes-include-derivatives-mode 1)
+
+  :config
+  ; Loading these themes is expensive but necessary to preview theme
+  (advice-add #'consult-theme :before #'modus-themes-get-all-known-themes)
+  (when (modus-themes-known-p doom-theme)
+    (load-theme doom-theme :no-confirm :no-enable))
+)
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
@@ -36,7 +54,6 @@
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
-
 
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
@@ -281,8 +298,16 @@ are open."
          (shell-command-to-string "agda-mode locate")))
 
 (after! evil
-  (setq evil-disable-insert-state-bindings 't)
-  (setq evil-default-state 'emacs))
+  (setq evil-disable-insert-state-bindings t)
+  (setq evil-default-state 'emacs)
+
+  ; This is not recommended compared to disable-insert-state-bindings,
+  ; but as an emacs user first, I prefer not to have insert state.
+  (defalias 'evil-insert-state 'evil-emacs-state)
+
+  (map! :nm "C-e" #'doom/forward-to-last-non-comment-or-eol)
+  (map! :nm "C-m" #'evil-scroll-line-down)
+  )
 
 (after! dired (remove-hook 'dired-mode-hook 'dired-omit-mode))
 
@@ -303,14 +328,18 @@ are open."
         :i "C-." #'company-complete))
 
 (after! corfu
-  (map! :e "C-<tab>" #'completion-at-point
-        :i "C-<tab>" #'completion-at-point
-        :e "C-." #'completion-at-point
-        :i "C-." #'completion-all-completions)
+  (map! :ei "C-." #'completion-at-point)
+  (map! :map 'corfu-map
+        "C-<TAB>" #'corfu-reset
+        :e "C-<RET>" #'corfu-quit
+        :e "C-<return>" #'corfu-quit
+        :ei "C-." #'corfu-insert-separator)
   (setq corfu-max-width 80)
 
-  (setq corfu-preselect 'directory)
-  (setq +corfu-want-ret-to-confirm 'minibuffer))
+  (setq corfu-preselect 'valid)
+  (setq +corfu-want-ret-to-confirm 't)
+  (setq corfu-quit-at-boundary t)
+  (setq corfu-quit-no-match t))
 
 (after! lsp-mode
   ; lsp-ui-doc has issues for me on wslg.
@@ -692,16 +721,37 @@ are open."
                                   "C-x t"
                                   "C-x v"
                                   "C-x w"
-                                  "C-h"))
+                                  "C-h"
+                                  "<ESC>"))
 
 (after! which-key
   ; Almost the same as above + which-key-paging-key, but works with leader key.
   ; It does however require which-key-paging-key to already be set, and thus depends
   ; on which-key already being loaded.
-  (defun map-which-key-paging-leader-prefixes (keys)
+  (defun map-which-key-paging-leader-prefixes (keys &optional map)
     (seq-doseq (key keys)
-      (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
-        (map! :leader :map 'which-key-mode-map chord #'which-key-C-h-dispatch))))
+      (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key)))
+            (map-or-default (or map 'which-key-mode-map)))
+        (map! :leader :map map-or-default chord #'which-key-C-h-dispatch))))
+
+  (defmacro map-which-key-paging-localleader-prefixes (mode-map keys &optional package)
+    (let ((package-list (or package '())))
+      `(after! ,package-list
+         (seq-doseq (key ,keys)
+            (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
+              (map! :localleader :map ,mode-map chord #'which-key-C-h-dispatch))))))
 
   (map-which-key-paging-leader-prefixes '("" "h" "p" "w"))
+
+  (map-which-key-paging-localleader-prefixes org-mode-map '("") org)
+  (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
 )
+
+(after! org
+  (advice-add #'org-mode-restart :around
+              (lambda (orig-fn)
+                (let ((current-evil-state evil-state))
+                  (funcall orig-fn)
+                  (unless (eq current-evil-state evil-state))
+                      (evil-change-state current-evil-state))))
+  )

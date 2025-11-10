@@ -64,3 +64,7 @@
 (package! hercules)
 
 (package! eldoc-box)
+
+(package! ef-themes)
+
+(package! catppuccin-theme)
