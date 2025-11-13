@@ -4,6 +4,61 @@
 ;; sync' after modifying this file!
 
 
+; Put exit modifications first, to make sure they still run even with an error in this file.
+
+(defvar my-prompt-on-exit t)
+(defvar my-popup-on-exit nil)
+
+(defun my-quit-p (&optional prompt)
+  "Do not prompt the user for confirmation when killing Emacs.
+
+Returns t if it is safe to kill this session. Does not prompt if no real buffers
+are open."
+  (interactive "P")
+  (or (not (ignore-errors (doom-real-buffer-list)))
+      (if my-prompt-on-exit
+          (yes-or-no-p (format "%s" (or prompt "Really quit Emacs?")))
+          (if (or use-dialog-box my-popup-on-exit)
+              (x-popup-dialog
+               t `("Really quit Emacs?"
+                   ("Yes" . t)
+                   ("Cancel" . nil)))
+            t))
+      (ignore (message "Aborted"))))
+
+(defun my-quit-fn (&rest _)
+  (interactive)
+  (my-quit-p
+   (format "%s  %s"
+           (propertize (nth (random (length +doom-quit-messages))
+                            +doom-quit-messages)
+                       'face '(italic default))
+           "Really quit Emacs?")))
+
+(setq confirm-kill-emacs #'my-quit-fn)
+
+(when (eq confirm-kill-emacs #'my-quit-fn)
+  (advice-add 'handle-delete-frame :around
+            (lambda (orig-fn event &rest args)
+              (setq my-prompt-on-exit nil)
+              (unwind-protect
+                  (apply orig-fn event args)
+                (setq my-prompt-on-exit t)
+                )
+              )))
+
+(defun my-noask-quit-message (&rest _)
+  (interactive)
+  (message (format "%s"
+           (propertize (nth (random (length +doom-quit-messages))
+                            +doom-quit-messages)
+                       'face '(italic default))))
+  t)
+
+(when (not confirm-kill-emacs)
+  (add-hook! kill-emacs-query-functions #'my-noask-quit-message))
+
+
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets.
 (setq user-full-name "John Doe"
@@ -33,11 +88,74 @@
 ;(setq doom-theme 'ef-owl)
 (setq doom-theme 'catppuccin)
 
-(setq catppuccin-flavor 'macchiato)
-(defun set-catppuccin-flavor-and-reload (flavor)
-  (interactive "MOne of latte, frappe, macchiato, or mocha: ")
-  (setq catppuccin-flavor (intern flavor))
-  (catppuccin-reload))
+
+(defvar theme-configuration-do-not-recurse nil)
+(defun setup-theme-configuration (applicable-theme when configure)
+  (let* (
+         (applicable-theme-p
+          (if
+              (functionp applicable-theme)
+              applicable-theme
+            (lambda (loading-theme)
+              (eq loading-theme applicable-theme)
+                )))
+          (configure-advice
+           (lambda (loading-theme &rest args)
+             "Configure theme"
+             (let ((do-not-recurse theme-configuration-do-not-recurse))
+               (setq theme-configuration-do-not-recurse t)
+               (when (and
+                      (not do-not-recurse)
+                      (funcall applicable-theme-p loading-theme)
+                      (not (member :no-enable args)))
+                 (funcall configure loading-theme))
+               (setq theme-configuration-do-not-recurse nil))
+             )))
+    (advice-add #'load-theme when configure-advice)
+    (advice-add #'consult-theme when configure-advice)
+
+    (when (funcall applicable-theme-p doom-theme)
+      (funcall configure-advice doom-theme))
+  ))
+
+(use-package! catppuccin-theme
+  :config
+
+  (setq catppuccin-flavor 'macchiato)
+
+  (defun set-catppuccin-flavor-and-reload (flavor)
+    (interactive "MOne of latte, frappe, macchiato, or mocha: ")
+    (setq catppuccin-flavor (intern flavor))
+    (catppuccin-reload)
+    (my-configire-catppuccin)
+    (catppuccin-reload))
+
+  (setq my-catppuccin-base-color "#272b38")
+  (defun my-configure-catppuccin ()
+    ;(catppuccin-set-color 'base "#282c34" 'macchiato) ; doom-one background
+    ;(catppuccin-set-color 'base "#262938" 'macchiato) ; a bit less intense than macchiato
+    ;(catppuccin-set-color 'base "#272b38" 'macchiato) ; a little less purple, more grey than the above
+    ;(catppuccin-set-color 'base "#282c3a" 'macchiato) ; should be less than the above, but I can't tell.
+
+    (catppuccin-set-color 'base my-catppuccin-base-color 'macchiato)
+
+    (let ((macchiato-red "#ed8796")
+          (macchiato-pink "#f5bde6"))
+      (custom-theme-set-faces! 'catppuccin
+        `(show-paren-match :foreground "#ee82ee" :weight bold)
+        ;`(font-lock-builtin-face :foreground ,macchiato-pink)
+        ))
+    )
+
+  (setup-theme-configuration
+   'catppuccin
+   :after
+   (lambda (_)
+     (when (not (eq (catppuccin-color 'base 'macchiato) my-catppuccin-base-color))
+       (my-configure-catppuccin)
+       (catppuccin-reload)
+       )))
+  )
 
 (use-package! ef-themes
   :init
@@ -45,11 +163,66 @@
   (modus-themes-include-derivatives-mode 1)
 
   :config
+
+  (defun my-modus-theme-p (theme)
+    (or
+     (string-prefix-p "ef-" (symbol-name theme))
+     (string-prefix-p "modus-" (symbol-name theme))))
+
+  ;; solaire-mode
+  (defvar my-ef-themes-solaire-faces-do-not-recurse nil)
+  (defun my-ef-themes-solaire-faces (loading-theme &rest args)
+    (when (and
+           (not my-ef-themes-solaire-faces-do-not-recurse)
+           (my-modus-theme-p loading-theme)
+           ; For whatever reason, loading-theme is not directly available inside modus-themes-with-colors
+           (eq loading-theme (modus-themes-get-current-theme :no-enable)))
+      (setq my-ef-themes-solaire-faces-do-not-recurse t)
+      (modus-themes-with-colors
+        (let ((theme (modus-themes-get-current-theme :no-enable)))
+          (custom-theme-set-faces!
+           theme
+           `(solaire-default-face :inherit default :background ,bg-dim :foreground ,fg-dim)
+           `(solaire-fringe-face :inherit solaire-default-face :foreground ,fg-dim)
+           `(solaire-line-number-face :inherit solaire-default-face :foreground ,fg-dim)
+           `(solaire-mode-line-face :foreground ,fg-dim :background ,bg-mode-line-active)
+           `(solaire-mode-line-inactive-face :inverse-video nil
+             :background ,bg-mode-line-active
+             :foreground ,fg-prose-verbatim)
+           `(solaire-header-line-face :inherit 'solaire-mode-line-face)
+           `(solaire-hl-line-face :background ,bg-active)
+           `(solaire-org-hide-face :background ,bg-dim :foreground ,bg-dim))))
+
+      ; solaire-mode checks this, so necessary to provide manually
+      (put loading-theme 'theme-feature t)
+      )
+    )
+
+  (advice-add #'solaire-mode--prepare-for-theme-a :before #'my-ef-themes-solaire-faces)
+
   ; Loading these themes is expensive but necessary to preview theme
-  (advice-add #'consult-theme :before #'modus-themes-get-all-known-themes)
-  (when (modus-themes-known-p doom-theme)
-    (load-theme doom-theme :no-confirm :no-enable))
-)
+  (defvar my-all-modus-themes-loaded nil)
+  (advice-add #'consult-theme :before
+              (lambda (theme &rest _)
+                "Load all modus themes"
+                (when (and (my-modus-theme-p theme) (not my-all-modus-themes-loaded))
+                  (modus-themes-get-all-known-themes)
+                  (setq my-all-modus-themes-loaded t)
+                )))
+
+  (advice-add #'consult-theme :after
+              (lambda (theme &rest _)
+                "Reload config"
+                (when (my-modus-theme-p theme)
+                  (modus-themes-load-theme theme)
+                )))
+
+  (when (my-modus-theme-p doom-theme)
+    (my-ef-themes-solaire-faces doom-theme)
+    ;(put doom-theme 'theme-feature t)
+    (modus-themes-load-theme doom-theme)
+    )
+  )
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
@@ -174,58 +347,6 @@
     (speedrect-mode)
   )
 
-
-(defvar my-prompt-on-exit t)
-(defvar my-popup-on-exit nil)
-
-(defun my-quit-p (&optional prompt)
-  "Do not prompt the user for confirmation when killing Emacs.
-
-Returns t if it is safe to kill this session. Does not prompt if no real buffers
-are open."
-  (interactive "P")
-  (or (not (ignore-errors (doom-real-buffer-list)))
-      (if my-prompt-on-exit
-          (yes-or-no-p (format "%s" (or prompt "Really quit Emacs?")))
-          (if (or use-dialog-box my-popup-on-exit)
-              (x-popup-dialog
-               t `("Really quit Emacs?"
-                   ("Yes" . t)
-                   ("Cancel" . nil)))
-            t))
-      (ignore (message "Aborted"))))
-
-(defun my-quit-fn (&rest _)
-  (interactive)
-  (my-quit-p
-   (format "%s  %s"
-           (propertize (nth (random (length +doom-quit-messages))
-                            +doom-quit-messages)
-                       'face '(italic default))
-           "Really quit Emacs?")))
-
-(setq confirm-kill-emacs #'my-quit-fn)
-
-(when (eq confirm-kill-emacs #'my-quit-fn)
-  (advice-add 'handle-delete-frame :around
-            (lambda (orig-fn event &rest args)
-              (setq my-prompt-on-exit nil)
-              (unwind-protect
-                  (apply orig-fn event args)
-                (setq my-prompt-on-exit t)
-                )
-              )))
-
-(defun my-noask-quit-message (&rest _)
-  (interactive)
-  (message (format "%s"
-           (propertize (nth (random (length +doom-quit-messages))
-                            +doom-quit-messages)
-                       'face '(italic default))))
-  t)
-
-(when (not confirm-kill-emacs)
-  (add-hook! kill-emacs-query-functions #'my-noask-quit-message))
 
 (use-package! ligature
   :load-path "path-to-ligature-repo"
