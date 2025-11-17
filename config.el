@@ -130,6 +130,8 @@ are open."
     (my-configire-catppuccin)
     (catppuccin-reload))
 
+  (setq my-catppuccin-backup-emacs-cursor nil)
+
   (setq my-catppuccin-base-color "#272b38")
   (defun my-configure-catppuccin ()
     ;(catppuccin-set-color 'base "#282c34" 'macchiato) ; doom-one background
@@ -140,11 +142,28 @@ are open."
     (catppuccin-set-color 'base my-catppuccin-base-color 'macchiato)
 
     (let ((macchiato-red "#ed8796")
-          (macchiato-pink "#f5bde6"))
+          (macchiato-pink "#f5bde6")
+          (macchiato-yellow "#eed49f")
+          (macchiato-sky "#91d7e3"))
       (custom-theme-set-faces! 'catppuccin
         `(show-paren-match :foreground "#ee82ee" :weight bold)
         ;`(font-lock-builtin-face :foreground ,macchiato-pink)
-        ))
+        `(font-lock-preprocessor-face :foreground "#f0c6c6")
+        `(warning :foreground "#cdbe70")
+        `(highlight-quoted-symbol :foreground ,macchiato-yellow)
+        `(highlight-quoted-quote  :foreground ,macchiato-sky)
+        )
+
+      (defun my-evil-update-cursor-color-h ()
+        (+evil-update-cursor-color-h)
+        (when (member 'catppuccin custom-enabled-themes)
+            (put 'cursor 'evil-emacs-color (catppuccin-color 'yellow 'macchiato))))
+
+      (remove-hook! '(doom-load-theme-hook doom-after-modules-config-hook) #'+evil-update-cursor-color-h)
+      (add-hook! '(doom-load-theme-hook doom-after-modules-config-hook) #'my-evil-update-cursor-color-h)
+
+      (my-evil-update-cursor-color-h)
+      )
     )
 
   (setup-theme-configuration
@@ -154,7 +173,8 @@ are open."
      (when (not (eq (catppuccin-color 'base 'macchiato) my-catppuccin-base-color))
        (my-configure-catppuccin)
        (catppuccin-reload)
-       )))
+       ))
+   )
   )
 
 (use-package! ef-themes
@@ -535,6 +555,7 @@ are open."
               (lambda (orig-fn msg &rest args)
                 (unless (and my-lsp-startup-time
                              (<= (float-time (time-subtract (current-time) my-lsp-startup-time)) 5))
+
                   (apply orig-fn msg args))))
 
   ; In this function and its peers, the core message is actually the first element of args,
@@ -834,6 +855,9 @@ are open."
 
 (after! rustic
   (setq lsp-rust-analyzer-import-granularity "module")
+
+  (after! lsp-mode
+    (lsp-register-custom-settings '(("rust-analyzer.imports.merge.maxLineLength" 80))))
   )
 
 (setq org-return-follows-link t)
