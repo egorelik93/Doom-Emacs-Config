@@ -61,8 +61,9 @@ are open."
 
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets.
-(setq user-full-name "John Doe"
-      user-mail-address "john@doe.com")
+;(setq user-full-name "John Doe"
+;      user-mail-address "john@doe.com")
+(load-file "private.el")
 
 ;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
 ;; are the three important ones:
@@ -855,9 +856,6 @@ are open."
 
 (after! rustic
   (setq lsp-rust-analyzer-import-granularity "module")
-
-  (after! lsp-mode
-    (lsp-register-custom-settings '(("rust-analyzer.imports.merge.maxLineLength" 80))))
   )
 
 (setq org-return-follows-link t)
