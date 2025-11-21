@@ -1008,11 +1008,11 @@ are open."
         "<f6>" #'dape-step-out
         "<f5>" #'dape-continue)
 
-  (defun my-dap-add-to-config (existing-config new-prop new-value)
+  (defun my-dape-add-to-config (existing-config new-prop new-value)
     (let ((cell (assoc existing-config dape-configs)))
       (setcdr cell (plist-put (cdr cell) new-prop new-value))))
 
-  (defun my-dap-new-config (base-config new-name)
+  (defun my-dape-new-config (base-config new-name)
       (let* ((cell (assoc base-config dape-configs))
              (new (cl-copy-seq (cdr cell))))
         (setf (alist-get new-name dape-configs) new)))
