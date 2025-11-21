@@ -942,7 +942,7 @@ are open."
                                (list :type "lldb"
                                      :request "launch"
                                      :name "Rust::Run"
-                                     :console "integratedTerminal" ; "internalConsole"
+                                     :console "integratedTerminal" ; "internalConsole"; "externalTerminal"
                                      :program (my-rust-dap-program)
                                      :cwd (projectile-project-root)
                                      :stopOnEntry nil
@@ -972,6 +972,9 @@ are open."
           ("*dap-ui-repl*" (side . bottom) (slot . 1) (window-height . 0.2)))
         )
 
+
+  (setq dap-external-terminal '("wt.exe" "--title" "dap-mode"
+                                "wsl" "-e" "sh" "-c" "{command}"))
 
   (setq dap-internal-terminal #'dap-internal-terminal-vterm)
 
