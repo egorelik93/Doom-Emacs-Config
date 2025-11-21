@@ -924,6 +924,7 @@ are open."
 (after! dap-mode
   (dap-mode 1)
   (require 'dap-codelldb)
+  (require 'dap-lldb)
   (require 'dap-gdb)
 
   (setq dap-auto-configure-features '(sessions locals breakpoints))
@@ -933,6 +934,8 @@ are open."
   ;(setq dap-codelldb-debug-program "~/.doom.d/debug-adapters/codelldb/extension/adapter/codelldb")
   (setq dap-codelldb-debug-path "~/.doom-emacs.d/.local/etc/dap-extension/vscode/codelldb")
   (dap-codelldb-setup)
+
+  (setq dap-lldb-debug-program '("/usr/sbin/lldb-dap"))
 
   (defun my-rust-dap-program ()
     (concat (projectile-project-root) "target/debug/" (projectile-project-name))
@@ -947,6 +950,17 @@ are open."
                                      :cwd (projectile-project-root)
                                      :stopOnEntry nil
                                      :args nil))
+
+  (dap-register-debug-template "Rust::LLDB-DAP::Run"
+                               (list :type "lldb-vscode"
+                                     :request "launch"
+                                     :name "Rust::LLDB-DAP::Run"
+                                     ;:console "integratedTerminal" ; "internalConsole"; "externalTerminal"
+                                     :program (my-rust-dap-program)
+                                     :cwd (projectile-project-root)
+                                     ;:stopOnEntry nil
+                                     :initCommands '("command script import ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/etc/lldb_lookup.py"
+                                                     "command source ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/etc/lldb_commands")))
 
   (dap-register-debug-template "Rust::GDB::Run"
                              (list :type "gdb"
