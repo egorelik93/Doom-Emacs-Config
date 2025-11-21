@@ -1009,11 +1009,18 @@ are open."
         "<f5>" #'dape-continue)
 
   (defun my-dape-add-to-config (existing-config new-prop new-value)
-    (let ((cell (assoc existing-config dape-configs)))
-      (setcdr cell (plist-put (cdr cell) new-prop new-value))))
+    (let* ((cell (assoc existing-config dape-configs))
+           (new (copy-sequence (cdr cell)))
+           (new (plist-put new new-prop new-value)))
+      (setf (alist-get existing-config dape-configs) new)))
 
   (defun my-dape-new-config (base-config new-name)
       (let* ((cell (assoc base-config dape-configs))
              (new (cl-copy-seq (cdr cell))))
         (setf (alist-get new-name dape-configs) new)))
+
+  ; Replacing Rust's built in pretty printing with an alternate version.
+  (my-dape-add-to-config 'codelldb-rust 'command-args
+                         '("--port" :autoport))
+  (my-dape-add-to-config 'codelldb-rust :initCommands ["command script import ~/downloads/rust-prettifier-for-lldb/rust_prettifier_for_lldb.py"])
   )
