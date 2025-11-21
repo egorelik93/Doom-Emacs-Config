@@ -74,7 +74,7 @@
        ;;eww               ; the internet is gross
        ;;ibuffer         ; interactive buffer management
        tramp             ; remote files at your arthritic fingertips
-       undo              ; persistent, smarter undo for your inevitable mistakes
+       (undo +tree)             ; persistent, smarter undo for your inevitable mistakes
        vc                ; version-control and Emacs, sitting in a tree
 
        :term
@@ -92,7 +92,8 @@
        ;;ansible
        ;;biblio            ; Writes a PhD for you (citation needed)
        ;;collab            ; buffers with friends
-       ;;debugger          ; FIXME stepping through code, to help you add bugs
+       debugger          ; FIXME stepping through code, to help you add bugs
+       ;;dap               ; Old version of debugger that I copied, which still uses dap mode.
        ;;direnv
        ;;docker
        ;;editorconfig      ; let someone else argue about tabs vs spaces

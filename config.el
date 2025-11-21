@@ -63,7 +63,7 @@ are open."
 ;; clients, file templates and snippets.
 ;(setq user-full-name "John Doe"
 ;      user-mail-address "john@doe.com")
-;(load-file "~/.doom.d/private.el")
+(load-file "~/.doom.d/private.el")
 
 ;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
 ;; are the three important ones:
@@ -908,3 +908,86 @@ are open."
   (add-to-list 'major-mode-remap-alist '(c-mode . nil))
   (add-to-list 'major-mode-remap-alist '(c++-mode . nil))
   (add-to-list 'major-mode-remap-alist '(c-or-c++-mode . nil)))
+
+; Having issues with it hanging.
+(set-file-template! 'gitignore-mode :ignore t)
+
+
+(defun my-suppress-popup (pred)
+  (push `(,pred display-buffer-no-window (allow-no-window . t))
+        +popup--display-buffer-alist)
+  )
+
+(defun add-to-display-buffer-alist (entry)
+  (push entry +popup--display-buffer-alist))
+
+(after! dap-mode
+  (dap-mode 1)
+  (require 'dap-codelldb)
+  (require 'dap-gdb)
+
+  (setq dap-auto-configure-features '(sessions locals breakpoints))
+
+  ; For some reason, the codelldp I downloaded for dape almost always has issues with dap,
+  ; with the panes not showing up and always the 'process filter' 'malformed message' error.
+  ;(setq dap-codelldb-debug-program "~/.doom.d/debug-adapters/codelldb/extension/adapter/codelldb")
+  (setq dap-codelldb-debug-path "~/.doom-emacs.d/.local/etc/dap-extension/vscode/codelldb")
+  (dap-codelldb-setup)
+
+  (defun my-rust-dap-program ()
+    (concat (projectile-project-root) "target/debug/" (projectile-project-name))
+    )
+
+  (dap-register-debug-template "Rust::LLDB::Run"
+                               (list :type "lldb"
+                                     :request "launch"
+                                     :name "Rust::Run"
+                                     :console "integratedTerminal" ; "internalConsole"
+                                     :program (my-rust-dap-program)
+                                     :cwd (projectile-project-root)
+                                     :stopOnEntry nil
+                                     :args nil))
+
+  (dap-register-debug-template "Rust::GDB::Run"
+                             (list :type "gdb"
+                                   :request "launch"
+                                   :name "Rust::GDB::Run"
+                                   :dap-server-path '("rust-gdb" "-i" "dap")
+                                   :gdbpath "gdb"
+                                   :target (my-rust-dap-program)
+                                   :cwd (projectile-project-root)))
+
+  (map! :map '+dap-running-session-mode-map
+        "<f8>" #'dap-next
+        "<f9>" #'dap-step-in
+        "<f6>" #'dap-step-out
+        "<f5>" #'dap-continue)
+
+  (setq dap-ui-buffer-configurations
+        `(("*dap-ui-locals*" (side . right) (slot . 1) (window-width . 0.2))
+          ("*dap-ui-expressions*" (side . right) (slot . 2) (window-width . 0.2))
+          ("*dap-ui-sessions*" (side . right) (slot . 3) (window-width . 0.2))
+          ("*dap-ui-breakpoints*" (side . right) (slot . 4) (window-width . 0.2))
+          (,dap-ui--debug-window-buffer (side . bottom) (slot . 5) (window-height . 0.2) )
+          ("*dap-ui-repl*" (side . bottom) (slot . 1) (window-height . 0.2)))
+        )
+
+
+  (setq dap-internal-terminal #'dap-internal-terminal-vterm)
+
+  (my-suppress-popup "\\* Rust::Run log\\*\\'")
+  (set-popup-rule! "\\*Rust::Run - Rust::Run\\*\\'"
+    :height 0.2
+    :actions '(display-buffer-below-selected))
+)
+
+(defvar my-dape-active-mode-map (make-sparse-keymap) "My custom keymap while debugging")
+(add-to-list 'minor-mode-map-alist (cons 'dape-active-mode my-dape-active-mode-map))
+
+(after! dape
+  (map! :map 'my-dape-active-mode-map
+        "<f8>" #'dape-next
+        "<f9>" #'dape-step-in
+        "<f6>" #'dape-step-out
+        "<f5>" #'dape-continue)
+  )
