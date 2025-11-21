@@ -921,6 +921,10 @@ are open."
 (defun add-to-display-buffer-alist (entry)
   (push entry +popup--display-buffer-alist))
 
+(defun my-rust-dap-program ()
+  (concat (projectile-project-root) "target/debug/" (projectile-project-name))
+  )
+
 (after! dap-mode
   (dap-mode 1)
   (require 'dap-codelldb)
@@ -936,10 +940,6 @@ are open."
   (dap-codelldb-setup)
 
   (setq dap-lldb-debug-program '("/usr/sbin/lldb-dap"))
-
-  (defun my-rust-dap-program ()
-    (concat (projectile-project-root) "target/debug/" (projectile-project-name))
-    )
 
   (dap-register-debug-template "Rust::LLDB::Run"
                                (list :type "lldb"
@@ -1007,4 +1007,13 @@ are open."
         "<f9>" #'dape-step-in
         "<f6>" #'dape-step-out
         "<f5>" #'dape-continue)
+
+  (defun my-dap-add-to-config (existing-config new-prop new-value)
+    (let ((cell (assoc existing-config dape-configs)))
+      (setcdr cell (plist-put (cdr cell) new-prop new-value))))
+
+  (defun my-dap-new-config (base-config new-name)
+      (let* ((cell (assoc base-config dape-configs))
+             (new (cl-copy-seq (cdr cell))))
+        (setf (alist-get new-name dape-configs) new)))
   )
