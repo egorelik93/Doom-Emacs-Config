@@ -856,6 +856,51 @@ are open."
 
 (after! rustic
   (setq lsp-rust-analyzer-import-granularity "module")
+
+  (setq lsp-rust-analyzer-lens-references-trait-enable t)
+  (setq lsp-rust-analyzer-lens-references-method-enable t)
+  (setq lsp-rust-analyzer-lens-references-adt-enable t)
+  ; Not entirely decided on this; supposedly overlaps with trait references
+  ; and I don't feel I've gotten a lot of use out of this.
+  (setq lsp-rust-analyzer-lens-implementations-enable t)
+  )
+
+(after! (rustic lsp-mode)
+  (defun my-lsp-rust-analyzer-debug (runnable)
+    (interactive (list (lsp-rust-analyzer--select-runnable)))
+
+    (use-package! dape :demand t)
+
+    (-let (((&rust-analyzer:Runnable
+             :args (&rust-analyzer:RunnableArgs :cargo-args :workspace-root? :executable-args)
+             :label) runnable))
+      (pcase (aref cargo-args 0)
+        ("run" (aset cargo-args 0 "build"))
+        ("test" (when (-contains? (append cargo-args ()) "--no-run")
+                  (cl-callf append cargo-args (list "--no-run")))))
+      (->> (append (list (executable-find "cargo"))
+                   cargo-args
+                   (list "--message-format=json"))
+           (s-join " ")
+           (shell-command-to-string)
+           (s-lines)
+           (-keep (lambda (s)
+                    (condition-case nil
+                        (-let* ((json-object-type 'plist)
+                                ((msg &as &plist :reason :executable) (json-read-from-string s)))
+                          (when (and executable (string= "compiler-artifact" reason))
+                            executable))
+                      (error))))
+         (funcall
+          (lambda (artifact-spec)
+            (pcase artifact-spec
+              (`() (user-error "No compilation artifacts or obtaining the runnable artifacts failed"))
+              (`(,spec) spec)
+              (_ (user-error "Multiple compilation artifacts are not supported")))))
+         (let ((config (dape--config-eval 'codelldb-rust `(:args ,executable-args))))
+           (dape config)))))
+
+  (advice-add #'lsp-rust-analyzer-debug :around (lambda (_ runnable) (my-lsp-rust-analyzer-debug runnable)))
   )
 
 (setq org-return-follows-link t)
