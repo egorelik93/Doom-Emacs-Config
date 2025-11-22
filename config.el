@@ -1023,4 +1023,9 @@ are open."
   (my-dape-add-to-config 'codelldb-rust 'command-args
                          '("--port" :autoport))
   (my-dape-add-to-config 'codelldb-rust :initCommands ["command script import ~/downloads/rust-prettifier-for-lldb/rust_prettifier_for_lldb.py"])
+
+  ;; Save breakpoints on quit
+  (add-hook 'kill-emacs-hook #'dape-breakpoint-save)
+  ;; Load breakpoints on startup
+  (dape-breakpoint-load)
   )
