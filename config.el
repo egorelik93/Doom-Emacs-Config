@@ -382,6 +382,10 @@ are open."
 ;;         )
 ;;       map)))
 
+(use-package repeat
+  :custom
+  (repeat-mode +1))
+
 (use-package! speedrect
   :config
     (speedrect-mode)
