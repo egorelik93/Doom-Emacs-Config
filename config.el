@@ -352,6 +352,25 @@ are open."
 (map! "C-RET" #'cua-rectangle-mark-mode)
 (map! "C-<return>" #'cua-rectangle-mark-mode)
 
+(map! :leader
+      (:prefix "b"
+               "0" #'+workspace/close-window-or-workspace
+               "1" #'delete-other-windows
+               "2" #'split-window-below
+               "3" #'split-window-right
+               "4" ctl-x-4-map
+               "5" ctl-x-5-map
+               (:after 2C-mode
+                       "6" 2C-mode-map)
+               "8" iso-transl-ctl-x-8-map
+               "o" #'other-window
+               "d" #'dired)
+      "x" ctl-x-map
+      "M-x" #'doom/open-scratch-buffer)
+
+; Because why not.
+(map! "C-x M-c M-b u t t e r f l y" #'butterfly)
+
 ; An initial attempt at creating shortcuts in rectangle mode.
 ; Deprecated in favor of speedrect.
 ;; (let ((map (lookup-key (current-global-map) (kbd "C-x r"))))
@@ -933,7 +952,7 @@ are open."
             (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
               (map! :localleader :map ,mode-map chord #'which-key-C-h-dispatch))))))
 
-  (map-which-key-paging-leader-prefixes '("" "h" "p" "w"))
+  (map-which-key-paging-leader-prefixes '("" "h" "p" "w" "b" "x"))
 
   (map-which-key-paging-localleader-prefixes org-mode-map '("") org)
   (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
