@@ -278,12 +278,12 @@ are open."
 ;(map! :map 'override "<Tools>" #'doom/leader)
 
 (defun translate-to-leader (prompt)
-  (if (evil-normal-state-p)
+  (if (not (evil-emacs-state-p))
       (kbd doom-leader-key)
       (kbd doom-leader-alt-key)))
 
 (defun translate-to-localleader (prompt)
-  (if (evil-normal-state-p)
+  (if (not (evil-emacs-state-p))
       (kbd doom-localleader-key)
       (kbd doom-localleader-alt-key)))
 
@@ -298,6 +298,22 @@ are open."
 
 (map! :map 'key-translation-map "<Launch6>" #'translate-to-localleader)
 (map! :map 'key-translation-map "<f15>" #'translate-to-localleader)
+
+(defun evil-motion-state-unless-god ()
+  (interactive)
+  (unless (bound-and-true-p god-local-mode) (evil-motion-state)))
+
+; I like the idea, but other than hjkl I just can't get
+; used to the commands.
+(map! :e "<Launch8>" #'evil-motion-state-unless-god
+      :e "<F17>" #'evil-motion-state-unless-god
+      :nmv "<Launch8>" #'evil-emacs-state
+      :nmv "<F17>" #'evil-emacs-state
+      :nm "<Launch7>" #'evil-emacs-state
+      :nm "<F16>" #'evil-emacs-state
+      :viro "<Launch7>" #'evil-escape
+      :viro "<F16>" #'evil-escape
+      )
 
 ; Created by Claude
 (defun my-evil-execute-in-normal-state ()
@@ -391,6 +407,171 @@ are open."
     (speedrect-mode)
   )
 
+; Copied and modified from module
+
+(defvar +god-read-only-mode-color "Gray"
+  "Cursor and bar color when `read-only-mode' is enabled.")
+
+(defvar +god-overwrite-mode-color "Yellow"
+  "Cursor and bar color when `overwrite-mode' is enabled.")
+
+(defvar +god-fill-overflow-color "IndianRed"
+  "Cursor and bar color when fill column width has been exceeded.")
+
+(defun +god--configure-cursor-and-modeline-h ()
+  "Configure cursor type, cursor color and doom-modeline bar color depending on mode."
+  (let* ((is-fill-overflow (> (current-column) fill-column))
+         (previous-cursor-color (frame-parameter nil 'cursor-color))
+         (previous-modeline-color (and (facep 'doom-modeline-bar)
+                                       (face-background 'doom-modeline-bar)))
+         (is-god-mode (bound-and-true-p god-local-mode))
+         (next-cursor-type
+          (cond (buffer-read-only 'box)
+                ((and overwrite-mode is-god-mode) 'hollow)
+                ((or is-god-mode overwrite-mode) 'box)
+                (t 'bar)))
+         (next-cursor-and-modeline-color
+          (cond (buffer-read-only +god-read-only-mode-color)
+                (is-fill-overflow +god-fill-overflow-color)
+                (overwrite-mode +god-overwrite-mode-color)
+                ((or previous-cursor-color (face-background 'cursor))))))
+    (setq cursor-type next-cursor-type)
+    (unless (eq previous-cursor-color next-cursor-and-modeline-color)
+      (set-cursor-color next-cursor-and-modeline-color))
+    (when (and (facep 'doom-modeline-bar)
+               (fboundp 'doom-modeline-refresh-bars)
+               (not (eq previous-modeline-color next-cursor-and-modeline-color)))
+      (set-face-attribute 'doom-modeline-bar nil :background next-cursor-and-modeline-color)
+      (doom-modeline-refresh-bars))))
+
+(defun +god--toggle-on-overwrite-h ()
+  (if (bound-and-true-p overwrite-mode)
+      (god-local-mode-pause)
+    (god-local-mode-resume)))
+
+(defun +god--configure-modeline-h ()
+  "Configure doom-modeline bar color depending on mode."
+  (let* ((is-fill-overflow (> (current-column) fill-column))
+         (previous-cursor-color (frame-parameter nil 'cursor-color))
+         (previous-modeline-color (and (facep 'doom-modeline-bar)
+                                       (face-background 'doom-modeline-bar)))
+         (is-god-mode (bound-and-true-p god-local-mode))
+         (next-modeline-color
+          (cond (buffer-read-only +god-read-only-mode-color)
+                (is-fill-overflow +god-fill-overflow-color)
+                (overwrite-mode +god-overwrite-mode-color)
+                ((and is-god-mode (or previous-cursor-color (face-background 'cursor))))
+                (t 'unspecified))
+          ))
+    (when (and (facep 'doom-modeline-bar)
+               (fboundp 'doom-modeline-refresh-bars)
+               (not (eq previous-modeline-color next-modeline-color)))
+      (set-face-attribute 'doom-modeline-bar nil :background next-modeline-color)
+      (doom-modeline-refresh-bars))))
+
+(defun my-god--configure-cursor-and-modeline-h ()
+  "Configure cursor type, cursor color and doom-modeline bar color depending on mode."
+  (let* ((is-fill-overflow (> (current-column) fill-column))
+         (previous-cursor-color (frame-parameter nil 'cursor-color))
+         (previous-modeline-color (and (facep 'doom-modeline-bar)
+                                       (face-background 'doom-modeline-bar)))
+         (is-god-mode (bound-and-true-p god-local-mode))
+         (next-cursor-type
+          (cond (buffer-read-only 'box)
+                ((and overwrite-mode is-god-mode) 'hollow)
+                ((or is-god-mode overwrite-mode) 'box)
+                (t 'bar)))
+         (next-modeline-color
+          (cond (buffer-read-only +god-read-only-mode-color)
+                (is-fill-overflow +god-fill-overflow-color)
+                (overwrite-mode +god-overwrite-mode-color)
+                ((or previous-cursor-color (face-background 'cursor))))))
+    (setq cursor-type next-cursor-type)
+    ;(unless (eq previous-cursor-color next-cursor-and-modeline-color)
+    ;  (set-cursor-color next-cursor-and-modeline-color))
+    (when (and (facep 'doom-modeline-bar)
+               (fboundp 'doom-modeline-refresh-bars)
+               (not (eq previous-modeline-color next-cursor-and-modeline-color)))
+      (set-face-attribute 'doom-modeline-bar nil :background next-cursor-and-modeline-color)
+      (doom-modeline-refresh-bars))))
+
+(defun god--configure-cursor-and-modeline-h ()
+  (let* ((is-fill-overflow (> (current-column) fill-column))
+         (previous-cursor-color (frame-parameter nil 'cursor-color))
+         (previous-modeline-color (and (facep 'doom-modeline-bar)
+                                       (face-background 'doom-modeline-bar)))
+         (is-god-mode (bound-and-true-p god-local-mode))
+         (next-cursor-type
+          (cond (buffer-read-only 'box)
+                ((and overwrite-mode is-god-mode) 'hollow)
+                ((or is-god-mode overwrite-mode) 'box)
+                (t 'bar)))
+         (next-modeline-color
+          (cond (buffer-read-only +god-read-only-mode-color)
+                (is-fill-overflow +god-fill-overflow-color)
+                (overwrite-mode +god-overwrite-mode-color)
+                ((or previous-cursor-color (face-background 'cursor))))))
+    (setq cursor-type next-cursor-type)
+    (unless (eq previous-cursor-color next-cursor-and-modeline-color)
+      (set-cursor-color next-cursor-and-modeline-color))
+    (when (and (facep 'doom-modeline-bar)
+               (fboundp 'doom-modeline-refresh-bars)
+               (not (eq previous-modeline-color next-cursor-and-modeline-color)))
+      (set-face-attribute 'doom-modeline-bar nil :background next-cursor-and-modeline-color)
+      (doom-modeline-refresh-bars))))
+
+(defun god--disable-modeline-h ()
+  (set-face-attribute 'doom-modeline-bar nil :background nil)
+  (doom-modeline-refresh-bars)
+)
+
+(use-package! god-mode
+  :defer
+  :config
+
+  (add-hook! 'god-mode-enabled-hook #'+god--configure-modeline-h)
+  (add-hook! 'god-mode-disabled-hook #'+god--configure-modeline-h)
+
+  (add-hook! 'overwrite-mode-hook #'+god--toggle-on-overwrite-h)
+
+  (after! evil
+    (add-hook! 'god-mode-enabled-hook #'evil-refresh-cursor)
+    (add-hook! 'god-mode-disabled-hook #'evil-refresh-cursor))
+
+  ; Not really what god mode is meant for, but I like this.
+  ; Easier than trying to learn evil mode just to use hjkl.
+  (map! :map god-local-mode-map
+        "j" #'evil-next-line
+        "k" #'evil-previous-line
+        "h" #'evil-backward-char
+        "l" #'evil-forward-char
+        "<Launch7>" #'god-local-mode
+        "<F16>" #'god-local-mode
+        )
+
+  (after! which-key
+    (which-key-enable-god-mode-support)))
+
+(map! :e "<Launch7>" #'god-local-mode
+      :e "<F16>" #'god-local-mode)
+
+(defun my-evil-emacs-cursor-fn ()
+  "Configure cursor type and color and doom-modeline bar color depending on mode."
+  (let* ((is-fill-overflow (> (current-column) fill-column))
+         (is-god-mode (bound-and-true-p god-local-mode))
+         (next-cursor-type
+          (cond (buffer-read-only 'box)
+                ((and overwrite-mode is-god-mode) 'hollow)
+                ((or is-god-mode overwrite-mode) 'box)
+                (t 'bar))))
+    (setq cursor-type next-cursor-type)
+    (cond (buffer-read-only (set-cursor-color +god-read-only-mode-color))
+          (is-fill-overflow (set-cursor-color +god-fill-overflow-color))
+          ((and is-god-mode overwrite-mode) (set-cursor-color +god-overwrite-mode-color))
+          (is-god-mode (+evil-default-cursor-fn))
+          (t (+evil-emacs-cursor-fn)))
+  ))
+
 
 (use-package! ligature
   :load-path "path-to-ligature-repo"
@@ -476,7 +657,17 @@ are open."
 
   (map! :nm "C-e" #'doom/forward-to-last-non-comment-or-eol)
   (map! :nm "C-m" #'evil-scroll-line-down)
+
+  ; Matches modern editors.
+  (setq evil-emacs-state-cursor #'my-evil-emacs-cursor-fn)
+  (setq evil-motion-state-cursor evil-normal-state-cursor)
   )
+
+(add-hook! 'overwrite-mode-hook
+  (progn
+    (+god--configure-modeline-h)
+    (evil-refresh-cursor)
+    ))
 
 (after! dired (remove-hook 'dired-mode-hook 'dired-omit-mode))
 
@@ -502,6 +693,8 @@ are open."
         "C-<TAB>" #'corfu-reset
         :e "C-<RET>" #'corfu-quit
         :e "C-<return>" #'corfu-quit
+        :e "<F16>" #'corfu-quit
+        :e "<Launch7>" #'corfu-quit
         :ei "C-." #'corfu-insert-separator)
   (setq corfu-max-width 80)
 

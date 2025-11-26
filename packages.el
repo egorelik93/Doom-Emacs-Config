@@ -68,3 +68,9 @@
 (package! ef-themes)
 
 (package! catppuccin-theme)
+
+; The built-in module enables it globally without any opportunity to disable,
+; which is not what I want.
+(package! god-mode)
+
+(package! evil-tutor)
