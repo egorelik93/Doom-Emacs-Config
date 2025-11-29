@@ -74,3 +74,9 @@
 (package! god-mode)
 
 (package! evil-tutor)
+
+(package! boon)
+
+; Using this to allow an alternate path to C-c menu, without needing god mode.
+(package! theist-mode
+  :recipe (:host github :repo "leotaku/theist-mode"))

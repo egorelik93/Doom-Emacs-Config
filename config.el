@@ -277,45 +277,81 @@ are open."
 ;(map! :map 'override "<f13>" #'doom/leader)
 ;(map! :map 'override "<Tools>" #'doom/leader)
 
-(defun translate-to-leader (prompt)
-  (if (not (evil-emacs-state-p))
-      (kbd doom-leader-key)
-      (kbd doom-leader-alt-key)))
-
-(defun translate-to-localleader (prompt)
-  (if (not (evil-emacs-state-p))
-      (kbd doom-localleader-key)
-      (kbd doom-localleader-alt-key)))
-
 ;(map! :map 'override "<Launch6>" #'my-localleader-alias)
 
-(map! :map 'key-translation-map "<Tools>" #'translate-to-leader)
+(defconst alt-tap-wsl "<Tools>")
 ;;; In WSL, F13 is getting mapped to <Tools>
-(map! :map 'key-translation-map "<f13>" #'translate-to-leader)
+(defconst alt-tap "<f13>")
 
-(map! :map 'key-translation-map "<Launch5>" (kbd "M-o"))
-(map! :map 'key-translation-map "<f14>" (kbd "M-o"))
+(defconst o-hold-wsl "<Launch5>")
+(defconst o-hold "<f14>")
 
-(map! :map 'key-translation-map "<Launch6>" #'translate-to-localleader)
-(map! :map 'key-translation-map "<f15>" #'translate-to-localleader)
+(defconst alt-dbl-tap-wsl "<Launch6>")
+(defconst alt-dbl-tap "<f15>")
 
-(defun evil-motion-state-unless-god ()
+(defconst ctl-tap-wsl "<Launch7>")
+(defconst ctl-tap "<F16>")
+
+(defconst ctl-dbl-tap-wsl "<Launch8>")
+(defconst ctl-dbl-tap "<F17>")
+
+(defun translate-to-leader (prompt)
+  (if (equal (this-single-command-raw-keys) (vector last-input-event))
+      (if (not (evil-emacs-state-p))
+          (kbd doom-leader-key)
+        (kbd doom-leader-alt-key))
+    (kbd alt-tap)
+    ))
+
+(defun translate-to-localleader (prompt)
+  (if (equal (this-single-command-raw-keys) (vector last-input-event))
+      (if (not (evil-emacs-state-p))
+          (kbd doom-localleader-key)
+        (kbd doom-localleader-alt-key))
+    (kbd alt-dbl-tap)
+    ))
+
+(map! :map 'key-translation-map alt-tap-wsl #'translate-to-leader)
+(map! :map 'key-translation-map alt-tap #'translate-to-leader)
+
+(map! :map 'key-translation-map o-hold-wsl (kbd "M-o"))
+(map! :map 'key-translation-map o-hold (kbd "M-o"))
+
+(map! :map 'key-translation-map alt-dbl-tap-wsl #'translate-to-localleader)
+(map! :map 'key-translation-map alt-dbl-tap #'translate-to-localleader)
+
+; I have a number of old wsl-specific duplicate keybindings
+; before I added this, and I don't feel like cleaning them up,
+; but try to rely on this from now on.
+; Does not work for other key-translations however; we can't have duplicate
+; translations, so those cannot be used
+; here.
+; If their respective translations do not handle this, we'll need to continue specifying both.
+; Update as needed.
+(map! :map 'key-translation-map
+      ctl-tap-wsl ctl-tap
+      ctl-dbl-tap-wsl ctl-dbl-tap)
+
+(defun evil-exit-emacs-state-unless-god ()
   (interactive)
-  (unless (bound-and-true-p god-local-mode) (evil-motion-state)))
+  (if (bound-and-true-p god-local-mode) (god-local-mode 0) (evil-exit-emacs-state)))
 
 ; I like the idea, but other than hjkl I just can't get
 ; used to the commands.
-(map! :e "<Launch8>" #'evil-motion-state-unless-god
-      :e "<F17>" #'evil-motion-state-unless-god
-      :nmv "<Launch8>" #'evil-emacs-state
-      :nmv "<F17>" #'evil-emacs-state
-      :nm "<Launch7>" #'evil-emacs-state
-      :nm "<F16>" #'evil-emacs-state
-      :viro "<Launch7>" #'evil-escape
-      :viro "<F16>" #'evil-escape
+(map! ; :e ctl-tap-wsl #'evil-exit-emacs-state-unless-god
+      ; :e ctl-tap #'evil-exit-emacs-state-unless-god
+      :nm ctl-tap-wsl #'evil-emacs-state
+      :nm ctl-tap #'evil-emacs-state
+      :nm ctl-dbl-tap-wsl #'evil-emacs-state
+      :nm ctl-dbl-tap #'evil-emacs-state
+      :viro ctl-tap-wsl #'evil-escape
+      :viro ctl-tap #'evil-escape
       )
 
 ; Created by Claude
+;
+; Works for visual modes, but now doesn't seem to work for text object commands.
+; Replaced with mapping directly to a (combined) normal state keymap.
 (defun my-evil-execute-in-normal-state ()
   "Execute a command in normal state, with special handling for visual modes.
  If the command enters visual or visual-block mode, call those commands
@@ -350,6 +386,12 @@ are open."
            (call-interactively cmd)))
 
         ;; For all other commands, execute in normal state and return
+        (cmd
+         (funcall (intern (format "evil-%s-state" original-state)))
+         (evil-execute-in-normal-state)
+         (funcall cmd)
+         )
+
         (t
          (execute-kbd-macro keys)
          ;; If we're still in normal state (didn't enter visual mode),
@@ -361,7 +403,7 @@ are open."
            ))))))
 
 
-(map! :map evil-emacs-state-map "M-o" #'my-evil-execute-in-normal-state)
+;(map! :map evil-emacs-state-map "M-o" #'my-evil-execute-in-normal-state)
 ;(map! :map evil-emacs-state-map "<Launch5>" #'my-evil-execute-in-normal-state)
 ;(map! :map evil-emacs-state-map "<f14>" #'my-evil-execute-in-normal-state)
 
@@ -381,7 +423,7 @@ are open."
                "8" iso-transl-ctl-x-8-map
                "o" #'other-window
                "d" #'dired)
-      "x" ctl-x-map
+      :desc "C-x" "x" ctl-x-map
       "M-x" #'doom/open-scratch-buffer)
 
 ; Because why not.
@@ -407,6 +449,99 @@ are open."
     (speedrect-mode)
   )
 
+(defun update-evil-emacs-cursor ()
+  (evil-set-cursor #'my-evil-emacs-cursor-fn)
+  )
+
+(defun boon-exit-insert-state-unless-god ()
+  (interactive)
+  (if (bound-and-true-p god-local-mode) (god-local-mode 0) #'boon-quit))
+
+; Boon is cool, but still needs a lot of configuration to work with anything else.
+(use-package! boon
+  :init
+  (advice-add #'evil-define-key* :after #'intercept-eveil-defines-and-apply-to-boon)
+
+  :config
+  (require 'boon-qwerty)
+
+  (require 'boon-powerline)
+  (boon-powerline-theme)
+
+  (setq boon-insert-conditions '((and (not (string= (buffer-name (current-buffer)) "BOON-TUTORIAL")))))
+  (remove-hook 'minibuffer-setup-hook 'boon-minibuf-hook)
+
+  (advice-add #'boon-update-cursor :around
+              (lambda (_)
+                "Do not rely on boon's update cursor"
+                (when (and (eq (current-buffer) (window-buffer (selected-window)))
+                           (eq evil-state 'emacs))
+                  (update-evil-emacs-cursor))))
+
+  ; Override boon's behavior to not care if it's read-only.
+  (defun boon-set-insert-state ()
+  "Switch to insert state."
+  (interactive)
+  (boon-set-state 'boon-insert-state))
+
+  (boon-mode)
+  (boon-insert)
+
+  (defvar boon-map-property-alist
+    '((command . boon-map)
+      (insert . boon-insert-map)
+      (special . boon-special-map)))
+  (defvar boon-map-alist
+    `((command . ,boon-command-map)
+      (insert . ,boon-insert-map)
+      (special . ,boon-special-map)))
+
+  (defun make-boon-map (mode state)
+    (let ((map (make-sparse-keymap))
+          (boon-map-property (cdr (assq state boon-map-property-alist)))
+          (boon-map (cdr (assq state boon-map-alist))))
+      (set-keymap-parent map boon-map)
+      (put mode boon-map-property map)
+    ))
+
+  (map! :map 'boon-moves-map
+        "j" #'backward-char
+        "l" #'forward-char
+        "i" #'previous-line
+        "k" #'next-line
+        "u" #'boon-smarter-backward
+        "o" #'boon-smarter-forward
+        "h" #'boon-beginning-of-line
+        ";" #'boon-end-of-line
+        "m" #'avy-goto-word-1
+        "p" nil
+        "J" #'backward-paragraph
+        "L" #'forward-paragraph
+        "I" #'boon-smarter-upward
+        "K" #'boon-smarter-downward
+        "M" #'avy-goto-char
+        )
+
+  (map! :e ctl-tap #'boon-set-command-state)
+  (map! :map 'boon-command-map ctl-tap #'boon-set-insert-like-state)
+  (map! :map 'boon-command-map ctl-dbl-tap #'boon-set-insert-like-state)
+
+  (defvar +doom-dashboard-mode-boon-map (make-boon-map '+doom-dashboard-mode 'command))
+  (defvar +doom-dashboard-mode-boon-special-map (make-boon-map '+doom-dashboard-mode 'special))
+
+  (map! :map (+doom-dashboard-mode-boon-map +doom-dashboard-mode-boon-special-map)
+        "i" #'+doom-dashboard/backward-button
+        "k" #'+doom-dashboard/forward-button)
+  )
+
+(use-package! theist-mode
+  :config
+  (map! :leader :desc "C-c" "M-c" #'theist-C-c)
+  )
+
+;(map! :map '+doom-dashboard-mode-map "i" #'+doom-dashboard/backward-button)
+;(map! :map '+doom-dashboard-mode-map "k" #'+doom-dashboard/forward-button)
+
 ; Copied and modified from module
 
 (defvar +god-read-only-mode-color "Gray"
@@ -417,32 +552,6 @@ are open."
 
 (defvar +god-fill-overflow-color "IndianRed"
   "Cursor and bar color when fill column width has been exceeded.")
-
-(defun +god--configure-cursor-and-modeline-h ()
-  "Configure cursor type, cursor color and doom-modeline bar color depending on mode."
-  (let* ((is-fill-overflow (> (current-column) fill-column))
-         (previous-cursor-color (frame-parameter nil 'cursor-color))
-         (previous-modeline-color (and (facep 'doom-modeline-bar)
-                                       (face-background 'doom-modeline-bar)))
-         (is-god-mode (bound-and-true-p god-local-mode))
-         (next-cursor-type
-          (cond (buffer-read-only 'box)
-                ((and overwrite-mode is-god-mode) 'hollow)
-                ((or is-god-mode overwrite-mode) 'box)
-                (t 'bar)))
-         (next-cursor-and-modeline-color
-          (cond (buffer-read-only +god-read-only-mode-color)
-                (is-fill-overflow +god-fill-overflow-color)
-                (overwrite-mode +god-overwrite-mode-color)
-                ((or previous-cursor-color (face-background 'cursor))))))
-    (setq cursor-type next-cursor-type)
-    (unless (eq previous-cursor-color next-cursor-and-modeline-color)
-      (set-cursor-color next-cursor-and-modeline-color))
-    (when (and (facep 'doom-modeline-bar)
-               (fboundp 'doom-modeline-refresh-bars)
-               (not (eq previous-modeline-color next-cursor-and-modeline-color)))
-      (set-face-attribute 'doom-modeline-bar nil :background next-cursor-and-modeline-color)
-      (doom-modeline-refresh-bars))))
 
 (defun +god--toggle-on-overwrite-h ()
   (if (bound-and-true-p overwrite-mode)
@@ -469,62 +578,6 @@ are open."
       (set-face-attribute 'doom-modeline-bar nil :background next-modeline-color)
       (doom-modeline-refresh-bars))))
 
-(defun my-god--configure-cursor-and-modeline-h ()
-  "Configure cursor type, cursor color and doom-modeline bar color depending on mode."
-  (let* ((is-fill-overflow (> (current-column) fill-column))
-         (previous-cursor-color (frame-parameter nil 'cursor-color))
-         (previous-modeline-color (and (facep 'doom-modeline-bar)
-                                       (face-background 'doom-modeline-bar)))
-         (is-god-mode (bound-and-true-p god-local-mode))
-         (next-cursor-type
-          (cond (buffer-read-only 'box)
-                ((and overwrite-mode is-god-mode) 'hollow)
-                ((or is-god-mode overwrite-mode) 'box)
-                (t 'bar)))
-         (next-modeline-color
-          (cond (buffer-read-only +god-read-only-mode-color)
-                (is-fill-overflow +god-fill-overflow-color)
-                (overwrite-mode +god-overwrite-mode-color)
-                ((or previous-cursor-color (face-background 'cursor))))))
-    (setq cursor-type next-cursor-type)
-    ;(unless (eq previous-cursor-color next-cursor-and-modeline-color)
-    ;  (set-cursor-color next-cursor-and-modeline-color))
-    (when (and (facep 'doom-modeline-bar)
-               (fboundp 'doom-modeline-refresh-bars)
-               (not (eq previous-modeline-color next-cursor-and-modeline-color)))
-      (set-face-attribute 'doom-modeline-bar nil :background next-cursor-and-modeline-color)
-      (doom-modeline-refresh-bars))))
-
-(defun god--configure-cursor-and-modeline-h ()
-  (let* ((is-fill-overflow (> (current-column) fill-column))
-         (previous-cursor-color (frame-parameter nil 'cursor-color))
-         (previous-modeline-color (and (facep 'doom-modeline-bar)
-                                       (face-background 'doom-modeline-bar)))
-         (is-god-mode (bound-and-true-p god-local-mode))
-         (next-cursor-type
-          (cond (buffer-read-only 'box)
-                ((and overwrite-mode is-god-mode) 'hollow)
-                ((or is-god-mode overwrite-mode) 'box)
-                (t 'bar)))
-         (next-modeline-color
-          (cond (buffer-read-only +god-read-only-mode-color)
-                (is-fill-overflow +god-fill-overflow-color)
-                (overwrite-mode +god-overwrite-mode-color)
-                ((or previous-cursor-color (face-background 'cursor))))))
-    (setq cursor-type next-cursor-type)
-    (unless (eq previous-cursor-color next-cursor-and-modeline-color)
-      (set-cursor-color next-cursor-and-modeline-color))
-    (when (and (facep 'doom-modeline-bar)
-               (fboundp 'doom-modeline-refresh-bars)
-               (not (eq previous-modeline-color next-cursor-and-modeline-color)))
-      (set-face-attribute 'doom-modeline-bar nil :background next-cursor-and-modeline-color)
-      (doom-modeline-refresh-bars))))
-
-(defun god--disable-modeline-h ()
-  (set-face-attribute 'doom-modeline-bar nil :background nil)
-  (doom-modeline-refresh-bars)
-)
-
 (use-package! god-mode
   :defer
   :config
@@ -535,8 +588,8 @@ are open."
   (add-hook! 'overwrite-mode-hook #'+god--toggle-on-overwrite-h)
 
   (after! evil
-    (add-hook! 'god-mode-enabled-hook #'evil-refresh-cursor)
-    (add-hook! 'god-mode-disabled-hook #'evil-refresh-cursor))
+    (add-hook! 'god-mode-enabled-hook #'update-evil-emacs-cursor)
+    (add-hook! 'god-mode-disabled-hook #'update-evil-emacs-cursor))
 
   ; Not really what god mode is meant for, but I like this.
   ; Easier than trying to learn evil mode just to use hjkl.
@@ -545,15 +598,26 @@ are open."
         "k" #'evil-previous-line
         "h" #'evil-backward-char
         "l" #'evil-forward-char
-        "<Launch7>" #'god-local-mode
-        "<F16>" #'god-local-mode
+        ; Doesn't seem to override other custom shortcuts
+        ; Make sure to configure taps in other maps to not change the evil state if in god mode.
+        :g ctl-dbl-tap-wsl #'god-local-mode
+        :g ctl-dbl-tap #'god-local-mode
+        :g ctl-tap-wsl #'god-local-mode
+        :g ctl-tap #'god-local-mode
+        ; Normally would be used to switch evil states, which we don't want from here.
+        ; Instead, let's use it to get back the lost kill-line.
+        "z" #'kill-line
         )
 
   (after! which-key
     (which-key-enable-god-mode-support)))
 
-(map! :e "<Launch7>" #'god-local-mode
-      :e "<F16>" #'god-local-mode)
+(map! :e ctl-dbl-tap-wsl #'god-local-mode
+      :e ctl-dbl-tap #'god-local-mode)
+
+(defun +set-cursor-color (color)
+  (unless (eq color (frame-parameter nil 'cursor-color))
+    (set-cursor-color color)))
 
 (defun my-evil-emacs-cursor-fn ()
   "Configure cursor type and color and doom-modeline bar color depending on mode."
@@ -562,13 +626,18 @@ are open."
          (next-cursor-type
           (cond (buffer-read-only 'box)
                 ((and overwrite-mode is-god-mode) 'hollow)
+                ((bound-and-true-p boon-command-state) boon-command-cursor-type)
+                ((bound-and-true-p boon-special-state) boon-special-cursor-type)
                 ((or is-god-mode overwrite-mode) 'box)
                 (t 'bar))))
-    (setq cursor-type next-cursor-type)
-    (cond (buffer-read-only (set-cursor-color +god-read-only-mode-color))
-          (is-fill-overflow (set-cursor-color +god-fill-overflow-color))
-          ((and is-god-mode overwrite-mode) (set-cursor-color +god-overwrite-mode-color))
+    (unless (eq cursor-type next-cursor-type)
+      (setq cursor-type next-cursor-type))
+    (cond (buffer-read-only (evil-set-cursor-color +god-read-only-mode-color))
+          (is-fill-overflow (evil-set-cursor-color +god-fill-overflow-color))
+          ((and is-god-mode overwrite-mode) (evil-set-cursor-color +god-overwrite-mode-color))
           (is-god-mode (+evil-default-cursor-fn))
+          ((bound-and-true-p boon-special-state) (evil-set-cursor-color boon-special-cursor-color))
+          ((bound-and-true-p boon-command-state) (+evil-default-cursor-fn))
           (t (+evil-emacs-cursor-fn)))
   ))
 
@@ -655,8 +724,15 @@ are open."
   ; but as an emacs user first, I prefer not to have insert state.
   (defalias 'evil-insert-state 'evil-emacs-state)
 
+  ; Removing this in favor of boon usage.
+  (setq evil-motion-state-modes nil)
+
   (map! :nm "C-e" #'doom/forward-to-last-non-comment-or-eol)
   (map! :nm "C-m" #'evil-scroll-line-down)
+
+  (setq evil-combined-normal-state-map (make-composed-keymap evil-normal-state-map evil-motion-state-map))
+  (map! :e "M-o" #'evil-execute-in-normal-state)
+  (map! :leader :desc "vim" "z" evil-combined-normal-state-map)
 
   ; Matches modern editors.
   (setq evil-emacs-state-cursor #'my-evil-emacs-cursor-fn)
@@ -664,9 +740,9 @@ are open."
   )
 
 (add-hook! 'overwrite-mode-hook
-  (progn
+  (when (eq evil-state 'emacs)
     (+god--configure-modeline-h)
-    (evil-refresh-cursor)
+    (evil-set-cursor #'update-evil-emacs-cursor)
     ))
 
 (after! dired (remove-hook 'dired-mode-hook 'dired-omit-mode))
@@ -693,8 +769,8 @@ are open."
         "C-<TAB>" #'corfu-reset
         :e "C-<RET>" #'corfu-quit
         :e "C-<return>" #'corfu-quit
-        :e "<F16>" #'corfu-quit
-        :e "<Launch7>" #'corfu-quit
+        :e ctl-tap #'corfu-quit
+        :e ctl-tap-wsl #'corfu-quit
         :ei "C-." #'corfu-insert-separator)
   (setq corfu-max-width 80)
 
@@ -1260,9 +1336,10 @@ are open."
 )
 
 (defvar my-dape-active-mode-map (make-sparse-keymap) "My custom keymap while debugging")
-(add-to-list 'minor-mode-map-alist (cons 'dape-active-mode my-dape-active-mode-map))
 
 (after! dape
+  (add-to-list 'minor-mode-map-alist (cons 'dape-active-mode my-dape-active-mode-map))
+
   (map! :map 'my-dape-active-mode-map
         "<f8>" #'dape-next
         "<f9>" #'dape-step-in
