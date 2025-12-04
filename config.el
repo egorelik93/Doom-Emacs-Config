@@ -478,7 +478,50 @@ are open."
   (require 'boon-powerline)
   (boon-powerline-theme)
 
-  (setq boon-insert-conditions '((and (not (string= (buffer-name (current-buffer)) "BOON-TUTORIAL")))))
+  ; The normal implementation applies to any special mode, which includes lots of modes
+  ; without custom keybindings.
+  (defun boon-special-mode-p ()
+  "Should the mode use `boon-special-state'? Less aggressive than original."
+  (or ;(and (eq (get major-mode 'mode-class) 'special)
+      ;     (not (boon-shell-mode-p)))
+      (-some 'eval boon-special-conditions)
+      (memq major-mode boon-special-mode-list)))
+
+  (setq boon-insert-conditions '((and (not (string= (buffer-name (current-buffer)) "BOON-TUTORIAL"))
+                                      (not (and (eq (get major-mode 'mode-class) 'special)
+                                                (not (boon-shell-mode-p)))))))
+
+  (after! evil
+    ; Removing this in favor of boon usage.
+    (defvar evil-backup-motion-state-modes evil-motion-state-modes)
+    (setq evil-motion-state-modes nil)
+
+    (defvar evil-backup-normal-state-modes evil-normal-state-modes)
+    (setq evil-normal-state-modes nil)
+
+    (advice-add 'evil-set-initial-state :around
+                (lambda (orig-fn mode state)
+                  (if (and state (eq state 'normal))
+                      (add-to-list 'evil-backup-normal-state-modes mode)
+                    (funcall orig-fn mode state))))
+
+    (setq boon-insert-conditions `((or ,(car boon-insert-conditions)
+                                       (derived-mode-p evil-backup-normal-state-modes))))
+
+    (after! evil-collection
+      (setq evil-normal-state-modes nil)
+
+      (evil-set-initial-state 'messages-buffer-mode 'insert)
+
+      ; This suppresses *Messages* from starting in evil normal mode.
+      ; However, the default boon behavior is to put this in special mode,
+      ; which has no keybindings.
+      (with-current-buffer "*Messages*"
+        (evil-change-to-initial-state)
+        )
+      )
+    )
+
   (remove-hook 'minibuffer-setup-hook 'boon-minibuf-hook)
 
   (advice-add #'boon-update-cursor :around
@@ -758,9 +801,6 @@ are open."
   ; This is not recommended compared to disable-insert-state-bindings,
   ; but as an emacs user first, I prefer not to have insert state.
   (defalias 'evil-insert-state 'evil-emacs-state)
-
-  ; Removing this in favor of boon usage.
-  (setq evil-motion-state-modes nil)
 
   (map! :nm "C-e" #'doom/forward-to-last-non-comment-or-eol)
   (map! :nm "C-m" #'evil-scroll-line-down)
