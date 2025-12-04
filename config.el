@@ -279,24 +279,30 @@ are open."
 
 ;(map! :map 'override "<Launch6>" #'my-localleader-alias)
 
-(defconst alt-tap-wsl "<Tools>")
+(defconst alt-tap-wsl "M-<Tools>")
 ;;; In WSL, F13 is getting mapped to <Tools>
-(defconst alt-tap "<f13>")
+(defconst alt-tap "M-<f13>")
+(defconst alt-tap-term-raw "\e[25;3~")
 
-(defconst o-hold-wsl "<Launch5>")
-(defconst o-hold "<f14>")
+(defconst o-hold-wsl "<Launch7>")
+(defconst o-hold "<f16>")
 
-(defconst alt-dbl-tap-wsl "<Launch6>")
-(defconst alt-dbl-tap "<f15>")
+(defconst alt-dbl-tap-wsl "M-<Launch5>")
+(defconst alt-dbl-tap "M-<f14>")
+(defconst alt-dbl-tap-term-raw "\e[26;3~")
 
-(defconst ctl-tap-wsl "<Launch7>")
-(defconst ctl-tap "<F16>")
+(defconst ctl-tap-wsl "C-<Launch6>")
+(defconst ctl-tap "C-<F15>")
+(defconst ctl-tap-term-raw "\e[28;5~")
 
-(defconst ctl-dbl-tap-wsl "<Launch8>")
-(defconst ctl-dbl-tap "<F17>")
+(defconst ctl-dbl-tap-wsl "C-<Launch9>")
+(defconst ctl-dbl-tap "C-<F18>")
+(defconst ctl-dbl-tap-term-raw "\e[32;5~")
 
 (defun translate-to-leader (prompt)
-  (if (equal (this-single-command-raw-keys) (vector last-input-event))
+  (if (or
+       (equal (this-single-command-raw-keys) (vector last-input-event))
+       (equal (this-single-command-raw-keys) (vconcat (listify-key-sequence alt-tap-term-raw))))
       (if (not (evil-emacs-state-p))
           (kbd doom-leader-key)
         (kbd doom-leader-alt-key))
@@ -304,7 +310,9 @@ are open."
     ))
 
 (defun translate-to-localleader (prompt)
-  (if (equal (this-single-command-raw-keys) (vector last-input-event))
+  (if (or
+       (equal (this-single-command-raw-keys) (vector last-input-event))
+       (equal (this-single-command-raw-keys) (vconcat (listify-key-sequence alt-dbl-tap-term-raw))))
       (if (not (evil-emacs-state-p))
           (kbd doom-localleader-key)
         (kbd doom-localleader-alt-key))
@@ -313,12 +321,14 @@ are open."
 
 (map! :map 'key-translation-map alt-tap-wsl #'translate-to-leader)
 (map! :map 'key-translation-map alt-tap #'translate-to-leader)
+(map! :map 'input-decode-map alt-tap-term-raw (kbd alt-tap))
 
-(map! :map 'key-translation-map o-hold-wsl (kbd "M-o"))
-(map! :map 'key-translation-map o-hold (kbd "M-o"))
+(map! :map 'key-translation-map o-hold-wsl (kbd (concat "C-c " alt-tap)))
+(map! :map 'key-translation-map o-hold (kbd (concat "C-c " alt-tap)))
 
 (map! :map 'key-translation-map alt-dbl-tap-wsl #'translate-to-localleader)
 (map! :map 'key-translation-map alt-dbl-tap #'translate-to-localleader)
+(map! :map 'input-decode-map alt-dbl-tap-term-raw #'translate-to-localleader)
 
 ; I have a number of old wsl-specific duplicate keybindings
 ; before I added this, and I don't feel like cleaning them up,
@@ -331,6 +341,9 @@ are open."
 (map! :map 'key-translation-map
       ctl-tap-wsl ctl-tap
       ctl-dbl-tap-wsl ctl-dbl-tap)
+(map! :map 'input-decode-map
+      ctl-tap-term-raw (kbd ctl-tap)
+      ctl-dbl-tap-term-raw (kbd ctl-dbl-tap))
 
 (defun evil-exit-emacs-state-unless-god ()
   (interactive)
@@ -459,9 +472,6 @@ are open."
 
 ; Boon is cool, but still needs a lot of configuration to work with anything else.
 (use-package! boon
-  :init
-  (advice-add #'evil-define-key* :after #'intercept-eveil-defines-and-apply-to-boon)
-
   :config
   (require 'boon-qwerty)
 
@@ -480,9 +490,12 @@ are open."
 
   ; Override boon's behavior to not care if it's read-only.
   (defun boon-set-insert-state ()
-  "Switch to insert state."
-  (interactive)
-  (boon-set-state 'boon-insert-state))
+    "Switch to insert state."
+    (interactive)
+    (boon-set-state 'boon-insert-state))
+
+  ; Boon does not save the state normally, which I find annoying.
+  (remove-hook 'window-selection-change-functions 'boon-reset-state-for-switchw)
 
   (boon-mode)
   (boon-insert)
@@ -520,6 +533,21 @@ are open."
         "I" #'boon-smarter-upward
         "K" #'boon-smarter-downward
         "M" #'avy-goto-char
+        "H" nil
+        "O" nil)
+
+  ; While these are clearly motions, boon itself places the scroll functions on the command map.
+  ; Most likely this has something to do with the motion map being special for selectors.
+  (map! :map 'boon-command-map
+        "C-j" #'scroll-down-line
+        "C-l" #'scroll-up-line
+        (:when (display-graphic-p)
+          "C-i" #'pixel-scroll-interpolate-up ; C-i is always equivalent to terminal TAB.
+                                              ; Thus, picking a frequent command that already has
+                                               ; a less reachable key, namely Page Up.
+          "C-k" #'pixel-scroll-interpolate-down)
+        (:unless (display-graphic-p)
+          "C-k" nil) ; discourage use while in termimal)
         )
 
   (map! :e ctl-tap #'boon-set-command-state)
@@ -532,6 +560,13 @@ are open."
   (map! :map (+doom-dashboard-mode-boon-map +doom-dashboard-mode-boon-special-map)
         "i" #'+doom-dashboard/backward-button
         "k" #'+doom-dashboard/forward-button)
+
+  (defvar org-boon-map (make-boon-map 'org-mode 'command))
+  (map! :map org-boon-map
+        "<RET>" #'org-return
+        "<return>" #'org-return)
+
+  (map! :leader :desc "boon" alt-tap boon-command-map)
   )
 
 (use-package! theist-mode
@@ -733,6 +768,12 @@ are open."
   (setq evil-combined-normal-state-map (make-composed-keymap evil-normal-state-map evil-motion-state-map))
   (map! :e "M-o" #'evil-execute-in-normal-state)
   (map! :leader :desc "vim" "z" evil-combined-normal-state-map)
+
+  (setq evil-lbrace-map (lookup-key evil-combined-normal-state-map (kbd "[")))
+  (setq evil-rbrace-map (lookup-key evil-combined-normal-state-map (kbd "[")))
+
+  (map! :leader :desc "[" "[" evil-lbrace-map)
+  (map! :leader :desc "]" "]" evil-rbrace-map)
 
   ; Matches modern editors.
   (setq evil-emacs-state-cursor #'my-evil-emacs-cursor-fn)
@@ -1225,7 +1266,7 @@ are open."
             (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
               (map! :localleader :map ,mode-map chord #'which-key-C-h-dispatch))))))
 
-  (map-which-key-paging-leader-prefixes '("" "h" "p" "w" "b" "x"))
+  (map-which-key-paging-leader-prefixes `("" "h" "p" "w" "b" "x" "z" "[" "]" ,alt-tap))
 
   (map-which-key-paging-localleader-prefixes org-mode-map '("") org)
   (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
