@@ -552,8 +552,8 @@ are open."
       (insert . ,boon-insert-map)
       (special . ,boon-special-map)))
 
-  (defun make-boon-map (mode state)
-    (let ((map (make-sparse-keymap))
+  (defun make-boon-map (mode state &optional merge-with)
+    (let ((map (if (listp merge-with) (make-composed-keymap merge-with) (make-sparse-keymap)))
           (boon-map-property (cdr (assq state boon-map-property-alist)))
           (boon-map (cdr (assq state boon-map-alist))))
       (set-keymap-parent map boon-map)
@@ -597,8 +597,8 @@ are open."
   (map! :map 'boon-command-map ctl-tap #'boon-set-insert-like-state)
   (map! :map 'boon-command-map ctl-dbl-tap #'boon-set-insert-like-state)
 
-  (defvar +doom-dashboard-mode-boon-map (make-boon-map '+doom-dashboard-mode 'command))
-  (defvar +doom-dashboard-mode-boon-special-map (make-boon-map '+doom-dashboard-mode 'special))
+  (defvar +doom-dashboard-mode-boon-map (make-boon-map '+doom-dashboard-mode 'command +doom-dashboard-mode-map))
+  (defvar +doom-dashboard-mode-boon-special-map (make-boon-map '+doom-dashboard-mode 'special +doom-dashboard-mode-map))
 
   (map! :map (+doom-dashboard-mode-boon-map +doom-dashboard-mode-boon-special-map)
         "i" #'+doom-dashboard/backward-button
