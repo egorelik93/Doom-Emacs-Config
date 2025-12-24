@@ -482,14 +482,25 @@ are open."
   (require 'boon-powerline)
   (boon-powerline-theme)
 
+
+  (defun my-special-mode-class-p ()
+    (and (eq (get major-mode 'mode-class) 'special)
+         (not (boon-shell-mode-p))
+         (not (string-prefix-p "doom" (symbol-name major-mode)))
+         (not (eq major-mode 'messages-buffer-mode)))
+    )
+
   ; The normal implementation applies to any special mode, which includes lots of modes
   ; without custom keybindings.
   (defun boon-special-mode-p ()
   "Should the mode use `boon-special-state'? Less aggressive than original."
   (or ;(and (eq (get major-mode 'mode-class) 'special)
-      ;     (not (boon-shell-mode-p)))
+      ;     (not (boon-shell-mode-p))
+      ;     (not (string-prefix-p "doom" (symbol-name major-mode))))
+      (my-special-mode-class-p)
       (-some 'eval boon-special-conditions)
-      (memq major-mode boon-special-mode-list)))
+      ;(memq major-mode boon-special-mode-list)
+      (derived-mode-p boon-special-mode-list)))
 
   (setq boon-insert-conditions '((and (not (string= (buffer-name (current-buffer)) "BOON-TUTORIAL"))
                                       (not (and (eq (get major-mode 'mode-class) 'special)
@@ -722,6 +733,14 @@ are open."
           ((bound-and-true-p boon-command-state) (+evil-default-cursor-fn))
           (t (+evil-emacs-cursor-fn)))
   ))
+
+(after! undo-tree
+  ; Terminal accomodation, C-? means backspace
+  ; Conveniently currenly mapped to emacs undo-redo in the terminal only.
+  ; Confusingly, terminal C-M-_ is actually C-M-/
+  (map! :unless (display-graphic-p)
+        "C-M-_" #'undo-tree-redo)
+  )
 
 
 (use-package! ligature
