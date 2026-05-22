@@ -1569,3 +1569,7 @@ are open."
   (advice-add #'claude-code-ide--configure-vterm-buffer :after (lambda ()
                 (local-set-key (kbd "<escape>") #'claude-code-ide-send-escape)))
   )
+
+
+(when (file-exists-p "~/.doom.d/config.local.el")
+  (load-file "~/.doom.d/config.local.el"))
