@@ -814,8 +814,9 @@ are open."
   ;; per mode with `ligature-mode'.
   (global-ligature-mode t))
 
-(load! (let ((coding-system-for-read 'utf-8))
-         (shell-command-to-string "agda-mode locate")))
+;; No longer necessary as Doom's Agda module includes this.
+;(load! (let ((coding-system-for-read 'utf-8))
+;         (shell-command-to-string "agda-mode locate")))
 
 (after! evil
   (setq evil-disable-insert-state-bindings t)
