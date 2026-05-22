@@ -862,16 +862,16 @@ are open."
   )
 
 (after! company
-  (map! :e "C-<tab>" #'company-complete
-        :i "C-<tab>" #'company-complete
+  (map! :e "C-\t" #'company-complete
+        :i "C-\t" #'company-complete
         :e "C-." #'company-complete
         :i "C-." #'company-complete))
 
 (after! corfu
   (map! :ei "C-." #'completion-at-point)
   (map! :map 'corfu-map
-        "C-<TAB>" #'corfu-reset
-        :e "C-<RET>" #'corfu-quit
+        "C-\t" #'corfu-reset
+        :e "C-\r" #'corfu-quit
         :e "C-<return>" #'corfu-quit
         :e ctl-tap #'corfu-quit
         :e ctl-tap-wsl #'corfu-quit
@@ -881,7 +881,11 @@ are open."
   (setq corfu-preselect 'valid)
   (setq +corfu-want-ret-to-confirm 't)
   (setq corfu-quit-at-boundary t)
-  (setq corfu-quit-no-match t))
+  (setq corfu-quit-no-match t)
+
+  (setq-hook! 'org-mode-hook corfu-auto-delay 1.5
+                             corfu-auto-prefix 4)
+  )
 
 (after! lsp-mode
   ; lsp-ui-doc has issues for me on wslg.
@@ -1336,6 +1340,8 @@ are open."
 )
 
 (after! org
+  (setq org-hide-emphasis-markers t)
+
   (advice-add #'org-mode-restart :around
               (lambda (orig-fn)
                 (let ((current-evil-state evil-state))
@@ -1470,4 +1476,96 @@ are open."
   (add-hook 'kill-emacs-hook #'dape-breakpoint-save)
   ;; Load breakpoints on startup
   (dape-breakpoint-load)
+  )
+
+
+; If opening a directory that is detected to be a project
+; (as all git repos should be),
+; I want to automatically open a workspace associated with it.
+
+
+(setq +workspaces-switch-project-function #'dired)
+
+(defvar my-session-file nil)
+
+(defun my/project-session-key (project-root)
+  (secure-hash 'sha1 (file-truename project-root))
+  )
+
+(defun my/session-file (project-name project-root)
+  (let* ((dir (file-name-directory (doom-session-file))))
+    (concat dir project-name "-" (my/project-session-key project-root)))
+  )
+
+(add-hook! 'window-setup-hook
+  (defun my-init-project-workspace ()
+    (when (and (stringp dired-directory) (equal (doom-project-root) dired-directory))
+      (setq my-session-file (my/session-file (doom-project-name) (doom-project-root)))
+      (when (file-exists-p my-session-file)
+        (doom/load-session my-session-file)
+        )
+      (+workspaces-switch-to-project-h))
+    (remove-hook 'window-setup-hook #'my-init-workspace)))
+
+(add-hook! '(find-file-hook kill-emacs-hook delete-frame-functions)
+  (when my-session-file
+    (doom/save-session my-session-file)))
+
+;(add-hook! 'doom-first-file-hook
+;  ;(when-let ((name (doom-project-name)))
+;  (when (equal (doom-project-root) dired-directory)
+;    (let ((dir dired-directory))
+;      (add-hook! 'window-setup-hook
+;        ;(+workspace-switch (doom-project-name) t)
+;        ;(dired dir)))))
+;        (defun my-init-workspace ()
+;          (+workspaces-switch-to-project-h)
+;          (remove-hook 'window-setup-hook #'my-init-workspace))))))
+    ; Modified from +workspace-switch
+    ;(unless (+workspace-exists-p name)
+    ;  (+workspace-new name))
+    ;(let ((old-name (+workspace-current-name)))
+    ;  (unless (equal old-name name)
+    ;    (setq +workspace--last
+    ;          (or (and (not (+workspace--protected-p old-name))
+    ;                   old-name)
+    ;              +workspaces-main))
+    ;    ;(persp-frame-switch name)
+    ;    )
+    ;  (equal (+workspace-current-name) name))))
+
+
+(setq lsp-haskell-formatting-provider "fourmolu")
+; My results were not great with this.
+;(setq haskell-ts-use-indent t)
+
+(after! haskell-mode
+  (map! :localleader
+        :map haskell-mode-map
+        "b" #'haskell-compile)
+  )
+
+(after! haskell-ts-mode
+  (map! :localleader
+        :map haskell-ts-mode-map
+        ; This is haskell-mode's; haskell-ts-mode doesn't have much of a separate command
+        "b" #'haskell-compile
+        "B" #'haskell-ts-compile-region-and-go
+        "r" #'run-haskell
+        "C" #'haskell-cabal-visit-file
+        )
+  )
+
+(use-package! claude-code-ide
+  ;:bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
+  :config
+  (map! :leader "M-'" #'claude-code-ide-menu
+                "C-'" #'claude-code-ide-menu)
+  (claude-code-ide-emacs-tools-setup) ; Optionally enable Emacs MCP tools
+
+  (setq claude-code-ide-window-width 80)
+
+  ; Unfortunately, Windows steals C-<escape>
+  (advice-add #'claude-code-ide--configure-vterm-buffer :after (lambda ()
+                (local-set-key (kbd "<escape>") #'claude-code-ide-send-escape)))
   )

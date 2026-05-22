@@ -80,3 +80,6 @@
 ; Using this to allow an alternate path to C-c menu, without needing god mode.
 (package! theist-mode
   :recipe (:host github :repo "leotaku/theist-mode"))
+
+(package! claude-code-ide
+  :recipe (:host github :repo "manzaltu/claude-code-ide.el"))
