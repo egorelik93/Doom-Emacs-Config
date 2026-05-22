@@ -296,11 +296,11 @@ are open."
 (defconst alt-dbl-tap-term-raw "\e[26;3~")
 
 (defconst ctl-tap-wsl "C-<Launch6>")
-(defconst ctl-tap "C-<F15>")
+(defconst ctl-tap "C-<f15>")
 (defconst ctl-tap-term-raw "\e[28;5~")
 
 (defconst ctl-dbl-tap-wsl "C-<Launch9>")
-(defconst ctl-dbl-tap "C-<F18>")
+(defconst ctl-dbl-tap "C-<f18>")
 (defconst ctl-dbl-tap-term-raw "\e[32;5~")
 
 (defun translate-to-leader (prompt)
@@ -1036,8 +1036,8 @@ are open."
 
 ;; https://old.reddit.com/r/emacs/comments/lwklvl/how_can_i_change_the_initial_window_size_of_emacs/
 ;; Set initial frame size and position
-(defun my/set-initial-frame ()
-  (let* ((base-factor-width 0.30) (base-factor-height 0.35)
+(defun my/set-initial-frame (base-factor-width base-factor-height)
+  (let* (
     (a-width (* (display-pixel-width) base-factor-width))
         (a-height (* (display-pixel-height) base-factor-height))
         (a-left (truncate (/ (- (display-pixel-width) a-width) 2)))
@@ -1045,10 +1045,11 @@ are open."
     (set-frame-position (selected-frame) a-left a-top)
     (set-frame-size (selected-frame) (truncate a-width)  (truncate a-height) t)))
 
-(if (display-graphic-p)
-    (progn
-      (setq frame-resize-pixelwise t)
-      (my/set-initial-frame)))
+;; Moved into local files.
+;(if (display-graphic-p)
+;    (progn
+;      (setq frame-resize-pixelwise t)
+;      (my/set-initial-frame 0.30 0.35)))
 
 (c-add-style "allman"
              '("k&r"
