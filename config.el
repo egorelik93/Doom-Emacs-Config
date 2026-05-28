@@ -44,6 +44,9 @@ are open."
               (unwind-protect
                   (apply orig-fn event args)
                 (setq my-prompt-on-exit t)
+                (when (server-running-p)
+                  (server-edit)
+                  )
                 )
               )))
 
@@ -1342,8 +1345,6 @@ are open."
 )
 
 (after! org
-  (setq org-hide-emphasis-markers t)
-
   (advice-add #'org-mode-restart :around
               (lambda (orig-fn)
                 (let ((current-evil-state evil-state))
@@ -1573,5 +1574,160 @@ are open."
   )
 
 
+(defun +org-capture/open-frame-ms (&optional initial-input key)
+  "Opens the org-capture window in the current frame, closing it once
+you're done. This can be called from an external script on Windows."
+  (interactive)
+  (when (and initial-input (string-empty-p initial-input))
+    (setq initial-input nil))
+  (when (and key (string-empty-p key))
+    (setq key nil))
+  (let* ((frame-title-format "")
+         (frame (selected-frame)))
+
+    (when (not (+org-capture-frame-p))
+      (modify-frame-parameters nil +org-capture-frame-parameters))
+    (with-selected-frame frame
+      (require 'org-capture)
+      (doom/reload-font)
+      (condition-case ex
+          (letf! ((#'pop-to-buffer #'switch-to-buffer))
+            (switch-to-buffer (doom-fallback-buffer))
+            (let ((org-capture-initial initial-input)
+                  org-capture-entry)
+              (when (and key (not (string-empty-p key)))
+                (setq org-capture-entry (org-capture-select-template key)))
+              (funcall +org-capture-fn)))
+        ('error
+         (message "org-capture: %s" (error-message-string ex))
+         (delete-frame frame))))))
+
+;(advice-add #'org-capture-select-template :before (lambda (&rest _) (doom/reload-font)))
+;(add-hook! org-capture-mode-hook (lambda (_) (doom/reload-font)))
+
+
+(defun insert-into-list (list n el)
+  "Insert into list LIST an element EL at index N.
+
+If N is 0, EL is inserted before the first element.
+
+The resulting list is returned.  As the list contents is mutated
+in-place, the old list reference does not remain valid."
+  (let* ((padded-list (cons nil list))
+         (c (nthcdr n padded-list)))
+    (setcdr c (cons el (cdr c)))
+    (cdr padded-list)))
+
+(insert-into-list +doom-dashboard-menu-sections 3
+  '("Find org-roam node"
+    :icon (nerd-icons-icon-for-mode 'org-mode :face 'doom-dashboard-menu-title)
+    :when (modulep! :lang org +roam)
+    :face (:inherit (doom-dashboard-menu-title bold))
+    :action org-roam-node-find))
+
+(after! org-protocol
+  ;(advice-add #'org-capture-select-template
+  ;            :around
+  ;            (lambda (fn &rest args)
+  ;              (condition-case err
+  ;                  (apply fn args)
+  ;                (user-error
+  ;                 (when (string= (cadr err) "Abort")
+  ;                   (server-edit)
+  ;                   nil)))))
+
+  (advice-add #'org-protocol-check-filename-for-protocol :before (lambda (&rest _) (doom/reload-font)))
+  )
+
+;(add-hook 'org-capture-mode-hook (lambda () (redisplay t)))
+
+(after! org
+  (setq org-hide-emphasis-markers t)
+
+  (when (modulep! :lang org +roam)
+
+    (add-to-list 'org-capture-templates
+                 '("r" "Org-Roam Node" entry
+                   (function org-roam-capture)
+                   ""
+                   :immediate-finish t))
+
+                                        ; Modified from https://www.d12frosted.io/posts/2021-01-16-task-management-with-roam-vol5
+
+    (defun vulpea-todo-p ()
+      "Return non-nil if current buffer has any todo entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks."
+      (seq-find                                 ; (3)
+       (lambda (type)
+         (eq type 'todo))
+       (org-element-map                         ; (2)
+           (org-element-parse-buffer 'headline) ; (1)
+           'headline
+         (lambda (h)
+           (org-element-property :todo-type h)))))
+
+    (defun my/org-roam-buffer-tags-get ()
+      (let ((node (org-roam-node-at-point)))
+        (if (org-roam-node-p node)
+            (org-roam-node-tags node)
+          nil)
+        )
+      )
+
+    (defun vulpea-todo-update-tag ()
+      "Update todo tag in the current buffer."
+      (when (and (not (active-minibuffer-window))
+                 (vulpea-buffer-p))
+        (save-excursion
+          (goto-char (point-min))
+          (let* ((tags (my/org-roam-buffer-tags-get))
+                 (original-tags tags))
+
+            (if (vulpea-todo-p)
+                (when (not (seq-contains-p tags "todo"))
+                  (org-roam-tag-add '("todo")))
+              (when (seq-contains-p tags "todo")
+                (org-roam-tag-remove '("todo"))))
+            ))))
+
+    (defun vulpea-buffer-p ()
+      "Return non-nil if the currently visited buffer is a note."
+      (and buffer-file-name
+           (string-prefix-p
+            (expand-file-name (file-name-as-directory org-roam-directory))
+            (file-name-directory buffer-file-name))))
+
+    (defun vulpea-todo-files ()
+      "Return a list of note files containing 'todo' tag." ;
+      (seq-uniq
+       (seq-map
+        #'car
+        (org-roam-db-query
+         [:select [nodes:file]
+          :from tags
+          :left-join nodes
+          :on (= tags:node-id nodes:id)
+          :where (like tag (quote "%\"todo\"%"))]))))
+
+    (defun vulpea-agenda-files-update (&rest _)
+      "Update the value of `org-agenda-files'."
+      (setq org-agenda-files (vulpea-todo-files)))
+
+    (add-hook 'find-file-hook #'vulpea-todo-update-tag)
+    (add-hook 'before-save-hook #'vulpea-todo-update-tag)
+
+    (advice-add 'org-agenda :before #'vulpea-agenda-files-update)
+    (advice-add 'org-todo-list :before #'vulpea-agenda-files-update)
+    )
+  )
+
+
+
+
+; Must be at end of file
+;
 (when (file-exists-p "~/.doom.d/config.local.el")
   (load-file "~/.doom.d/config.local.el"))
