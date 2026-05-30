@@ -62,6 +62,17 @@ are open."
   (add-hook! kill-emacs-query-functions #'my-noask-quit-message))
 
 
+; Doom apparently sets the default scratch to Fundamental for faster loading,
+; compared to the emacs default of lisp.
+; Setting this to t causes doom's own scratch to inherit
+; whatever was the mode of the previous buffer - but only the first time that scratch is created.
+; Since Doom also persists scratch and its mode, as far as I can tell
+; this is pretty much only useful for a project-specific scratch starting in that project's mode.
+; See this link: https://github.com/doomemacs/doomemacs/issues/490
+; For my purposes, running elisp like in the original *scratch* buffer is probably the most useful.
+(setq doom-scratch-initial-major-mode 'lisp-interaction-mode)
+
+
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets.
 ;(setq user-full-name "John Doe"
@@ -443,8 +454,15 @@ are open."
                "8" iso-transl-ctl-x-8-map
                "o" #'other-window
                "d" #'dired)
-      :desc "C-x" "x" ctl-x-map
-      "M-x" #'doom/open-scratch-buffer)
+      ; This was a good idea in theory,
+      ; but in practice I am not using it, and it moved the doom scratch buffer
+      ; to an inconvenient combination on a normal keyboard.
+      ; Doom apparently wants you to use their scratch buffer instead of the built-in *scratch*.
+      ; :leader b x is almost the same command but apparently not a toggle?
+      ; Besides, this is messing up preferred bindings for C-x commands.
+      ;:desc "C-x" "x" ctl-x-map
+      ;"M-x" #'doom/open-scratch-buffer
+      )
 
 ; Because why not.
 (map! "C-x M-c M-b u t t e r f l y" #'butterfly)
@@ -1054,6 +1072,56 @@ are open."
 ;      (setq frame-resize-pixelwise t)
 ;      (my/set-initial-frame 0.30 0.35)))
 
+; Updated version
+(defun my/default-frame-dims (base-factor-width base-factor-height)
+  (let* (
+         (a-width (* (display-pixel-width) base-factor-width))
+         (a-height (* (display-pixel-height) base-factor-height))
+         (a-left (truncate (/ (- (display-pixel-width) a-width) 2)))
+         (a-top (truncate (/ (- (display-pixel-height) a-height) 2))))
+    `(
+      (left . ,(truncate a-left))
+      (top . ,(truncate a-top))
+      (width . (text-pixels . ,(truncate a-width)))
+      (height . (text-pixels . ,(truncate a-height))))))
+
+(defun my/set-frame-dims (dims)
+  (setq frame-resize-pixelwise t)
+  (let ((left (truncate (alist-get 'left dims)))
+        (top (truncate (alist-get 'top dims)))
+        (width (truncate (cdr (alist-get 'width dims))))
+        (height (truncate (cdr (alist-get 'height dims)))))
+    (set-frame-position (selected-frame) left top)
+    (set-frame-size (selected-frame) width height t)))
+
+(defvar my/base-factor-width 0.30 "Percentage of screen to set default frame width to")
+(defvar my/base-factor-height 0.35 "Percentage of screen to set default frame height to")
+
+; Set the base factor vars and call this function in the local config.
+(defun my/setup-frame-dims ()
+  (defun my/setup-frame-dims--apply ()
+    (let ((dims (my/default-frame-dims my/base-factor-width my/base-factor-height)))
+      (my/set-frame-dims dims)
+      (setf (alist-get (window-system) window-system-default-frame-alist) dims))
+    )
+
+  (setq frame-resize-pixelwise t)
+  (if (daemonp)
+      (add-hook 'server-after-make-frame-hook
+                (defun my/setup-frame-dims-late (&optional _)
+                  (when (display-graphic-p)
+                    (my/setup-frame-dims--apply)
+                    (remove-hook 'server-after-make-frame-hook #'my/setup-frame-size-late))))
+    (when (display-graphic-p)
+      (my/setup-frame-dims--apply)
+      ;(add-hook 'window-setup-hook
+      ;          (defun my/setup-frame-dims-late (&optional _)
+      ;            (when (display-mouse-p)
+      ;              (my/setup-frame-dims--apply)
+      ;              (remove-hook 'window-setup-hook #'my/setup-frame-size-late))
+      ;            ))
+      )))
+
 (c-add-style "allman"
              '("k&r"
                (c-basic-offset 4)
@@ -1338,7 +1406,7 @@ are open."
             (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
               (map! :localleader :map ,mode-map chord #'which-key-C-h-dispatch))))))
 
-  (map-which-key-paging-leader-prefixes `("" "h" "p" "w" "b" "x" "z" "[" "]" ,alt-tap))
+  (map-which-key-paging-leader-prefixes `("" "h" "p" "w" "b" "z" "[" "]" ,alt-tap))
 
   (map-which-key-paging-localleader-prefixes org-mode-map '("") org)
   (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
