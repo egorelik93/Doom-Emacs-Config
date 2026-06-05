@@ -146,7 +146,7 @@ are open."
     (interactive "MOne of latte, frappe, macchiato, or mocha: ")
     (setq catppuccin-flavor (intern flavor))
     (catppuccin-reload)
-    (my-configire-catppuccin)
+    (my-configure-catppuccin)
     (catppuccin-reload))
 
   (setq my-catppuccin-backup-emacs-cursor nil)
@@ -1266,7 +1266,7 @@ are open."
             merge-window-share merge-window-lines
             (buf-Ancestor (with-current-buffer control-buffer
                             ediff-ancestor-buffer))
-            wind-A wind-B wind-C wind-Ancestor)
+            wind-A wind-B wind-C wind-Ancestor wind-topleft)
         (with-current-buffer control-buffer
           (setq merge-window-share ediff-merge-window-share
                 ;; this lets us have local versions of ediff-split-window-function
@@ -1450,8 +1450,8 @@ are open."
               (lambda (orig-fn)
                 (let ((current-evil-state evil-state))
                   (funcall orig-fn)
-                  (unless (eq current-evil-state evil-state))
-                      (evil-change-state current-evil-state))))
+                  (unless (eq current-evil-state evil-state)
+                      (evil-change-state current-evil-state)))))
   )
 
 (after! cc-mode
@@ -1609,7 +1609,7 @@ are open."
         (doom/load-session my-session-file)
         )
       (+workspaces-switch-to-project-h))
-    (remove-hook 'window-setup-hook #'my-init-workspace)))
+    (remove-hook 'window-setup-hook #'my-init-project-workspace)))
 
 (add-hook! '(find-file-hook kill-emacs-hook delete-frame-functions)
   (when my-session-file
