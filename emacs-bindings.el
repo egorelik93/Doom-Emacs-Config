@@ -183,8 +183,7 @@
 
       ;;; objed
       (:when (modulep! :editor objed +manual)
-        ; Not valid on windows
-        ;"M-SPC"     #'objed-activate
+        "M-SPC"     #'objed-activate
         )
 
       ;;; buffer management
@@ -286,12 +285,6 @@
           "p"     #'neotree-previous-line
           "N"     #'neotree-select-next-sibling-node
           "P"     #'neotree-select-previous-sibling-node))
-
-      ;;; popups
-      (:when (modulep! :ui popup)
-        "C-x p"   #'+popup/other
-        "C-`"     #'+popup/toggle
-        "C-~"     #'+popup/raise)
 
       ;;; smartparens
       (:after smartparens
