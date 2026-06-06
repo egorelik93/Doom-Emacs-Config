@@ -567,6 +567,10 @@ are open."
                            (eq evil-state 'emacs))
                   (update-evil-emacs-cursor))))
 
+  ; Savehist gets extremely large if we allow boon to store changes in shells.
+  (advice-add 'boon/after-change-hook :before-until
+            (lambda (&rest _) (boon-shell-mode-p)))
+
   ; Override boon's behavior to not care if it's read-only.
   (defun boon-set-insert-state ()
     "Switch to insert state."
