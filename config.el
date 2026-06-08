@@ -1833,6 +1833,8 @@ tasks."
 (setq flyspell-mode-map (make-sparse-keymap))
 
 (after! jinx
+  (setq jinx-languages "en_US")
+
   ;; Import any ispell LocalWords already in the file so they're honoured by jinx.
   (add-hook! 'jinx-mode-hook
     (defun +jinx-load-ispell-localwords-h ()
