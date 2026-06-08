@@ -1671,7 +1671,7 @@ are open."
                 "C-'" #'claude-code-ide-menu)
   (claude-code-ide-emacs-tools-setup) ; Optionally enable Emacs MCP tools
 
-  (setq claude-code-ide-window-width 80)
+  ;(setq claude-code-ide-window-width 80)
 
   ; Unfortunately, Windows steals C-<escape>
   (advice-add #'claude-code-ide--configure-vterm-buffer :after (lambda ()
@@ -1827,6 +1827,32 @@ tasks."
     (advice-add 'org-agenda :before #'vulpea-agenda-files-update)
     (advice-add 'org-todo-list :before #'vulpea-agenda-files-update)
     )
+  )
+
+; If using flyspell, their bindings are overly aggressive
+(setq flyspell-mode-map (make-sparse-keymap))
+
+(after! jinx
+  ;; Import any ispell LocalWords already in the file so they're honoured by jinx.
+  (add-hook! 'jinx-mode-hook
+    (defun +jinx-load-ispell-localwords-h ()
+      (require 'ispell)
+      (when-let* ((words (save-excursion
+                           (goto-char (point-min))
+                           (cl-loop while (search-forward ispell-words-keyword nil t)
+                                    collect (string-trim
+                                             (buffer-substring-no-properties
+                                              (point) (line-end-position)))))))
+        (let ((merged (mapconcat #'identity words " ")))
+          (setq jinx-local-words (concat jinx-local-words merged))
+          (setq jinx--session-words (append jinx--session-words (split-string merged)))))))
+
+  (when (modulep! :completion vertico)
+    (after! vertico-multiform
+      (add-to-list 'vertico-multiform-categories
+                   '(jinx grid
+                     (vertico-grid-annotate . 20)
+                     (vertico-count . 4)))))
   )
 
 
