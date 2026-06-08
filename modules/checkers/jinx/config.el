@@ -20,4 +20,6 @@
     (add-to-list 'embark-repeat-actions #'jinx-next)
     (add-to-list 'embark-repeat-actions #'jinx-previous)
     (add-to-list 'embark-target-injection-hooks (list #'jinx-correct #'embark--ignore-target)))
+
+    (map! :map embark-identifier-map "$" #'jinx-correct)
   )
