@@ -1693,6 +1693,10 @@ are open."
         )
   )
 
+(after! vterm
+  (setq vterm-min-window-width 40)
+  )
+
 (use-package! claude-code-ide
   ;:bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
   :config
