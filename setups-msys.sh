@@ -34,6 +34,7 @@ done
 
 # --- Configuration -----------------------------------------------------------
 
+# Specify which version version was used to compile emacs
 TARGET_GCC_VERSION="14.2.0-1"   # full version with epoch, as used in package filenames
 
 # Adjust the package name for your MSYS2 subsystem:
@@ -41,6 +42,9 @@ TARGET_GCC_VERSION="14.2.0-1"   # full version with epoch, as used in package fi
 #   CLANG64:         mingw-w64-clang-x86_64-gcc
 #   MSYS (native):   gcc
 PKG_PREFIX="mingw-w64-x86_64"
+
+# Check SRC_DIR for what this should be
+BIN_PREFIX="x86_64-w64-mingw32"
 
 SRC_DIR="/mingw64/bin"
 
@@ -74,10 +78,10 @@ FILES=(
 "libasprintf-*.dll"
 "ngettext.exe"
 "printf_gettext.exe"
-"${PKG_PREFIX}-gcc-*.exe"
-"${PKG_PREFIX}-gcc-ar.exe"
-"${PKG_PREFIX}-gcc-nm.exe"
-"${PKG_PREFIX}-gcc-ranlib.exe"
+"${BIN_PREFIX}-gcc-*.exe"
+"${BIN_PREFIX}-gcc-ar.exe"
+"${BIN_PREFIX}-gcc-nm.exe"
+"${BIN_PREFIX}-gcc-ranlib.exe"
 "libgmpxx-*.dll"
 "pzstd.exe"
 "libdatrie-*.dll"
@@ -151,10 +155,10 @@ FILES=(
 "libgccjit-*.dll"
 "libgomp-*.dll"
 "libquadmath-*.dll"
-"${PKG_PREFIX}-c++.exe"
-"${PKG_PREFIX}-cc.exe"
-"${PKG_PREFIX}-mingw32-g++.exe"
-"x86_64-w64-mingw32-gcc.exe"
+"${BIN_PREFIX}-c++.exe"
+"${BIN_PREFIX}-cc.exe"
+"${BIN_PREFIX}-g++.exe"
+"${BIN_PREFIX}-gcc.exe"
 )
 
 
@@ -299,7 +303,7 @@ echo "Installing enchant"
 pacman -Sdd --needed --noconfirm "${PKG_PREFIX}-enchant"
 pacman -S --needed --noconfirm "${PKG_PREFIX}-pkgconf"
 
-# The msys package has unnecessary python dependencies
+# The msys glib package has unnecessary python dependencies
 pacman -S --needed --noconfirm --asdeps "${PKG_PREFIX}-pcre2"
 pacman -Sdd --needed --noconfirm --asdeps "${PKG_PREFIX}-glib2"
 
