@@ -927,9 +927,35 @@ are open."
         :i "C-." #'company-complete))
 
 (after! corfu
+
+  (defun my/corfu-next-or-down (&optional n)
+    "Move to next candidate, or quit if only one candidate exists.
+  Falls through to whatever <down> is bound to outside corfu-map."
+    (interactive "p")
+    (if (= (length corfu--candidates) 1)
+        (progn
+          (corfu-quit)
+          (call-interactively (or (key-binding (kbd "<down>")) #'next-line)))
+      (corfu-next n)))
+
+  (defun my/corfu-prev-or-up (&optional n)
+    "Move to prev candidate, or quit if only one candidate exists.
+  Falls through to whatever <up> is bound to outside corfu-map."
+    (interactive "p")
+    (if (= (length corfu--candidates) 1)
+        (progn
+          (corfu-quit)
+          (call-interactively (or (key-binding (kbd "<up>")) #'previous-line)))
+      (corfu-previous n)))
+
+  (add-to-list 'corfu-continue-commands 'my/corfu-next-or-down)
+  (add-to-list 'corfu-continue-commands 'my/corfu-prev-or-up)
+
   (map! :ei "C-." #'completion-at-point)
   (map! :map 'corfu-map
         "C-\t" #'corfu-reset
+        "<down>" #'my/corfu-next-or-down
+        "<up>" #'my/corfu-prev-or-up
         :e "C-\r" #'corfu-quit
         :e "C-<return>" #'corfu-quit
         :e ctl-tap #'corfu-quit
@@ -941,6 +967,9 @@ are open."
   (setq +corfu-want-ret-to-confirm 't)
   (setq corfu-quit-at-boundary t)
   (setq corfu-quit-no-match t)
+
+  ; The default is a bit too aggressive
+  (setq corfu-auto-delay 0.48)
 
   (setq-hook! 'org-mode-hook corfu-auto-delay 1.5
                              corfu-auto-prefix 4)
@@ -1671,7 +1700,7 @@ are open."
                 "C-'" #'claude-code-ide-menu)
   (claude-code-ide-emacs-tools-setup) ; Optionally enable Emacs MCP tools
 
-  ;(setq claude-code-ide-window-width 80)
+  (setq claude-code-ide-window-width 40)
 
   ; Unfortunately, Windows steals C-<escape>
   (advice-add #'claude-code-ide--configure-vterm-buffer :after (lambda ()
