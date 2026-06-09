@@ -948,8 +948,14 @@ are open."
           (call-interactively (or (key-binding (kbd "<up>")) #'previous-line)))
       (corfu-previous n)))
 
+  ; Solution found by Claude - if we don't do this, Corfu won't
+  ; register my modified commands as navigation.
   (add-to-list 'corfu-continue-commands 'my/corfu-next-or-down)
   (add-to-list 'corfu-continue-commands 'my/corfu-prev-or-up)
+
+  ; To be consistent with corfu-next/prev, hide from M-x
+  (put #'my/corfu-next-or-down 'completion-predicate #'ignore)
+  (put #'my/corfu-prev-or-up 'completion-predicate #'ignore)
 
   (map! :ei "C-." #'completion-at-point)
   (map! :map 'corfu-map
