@@ -500,8 +500,10 @@ are open."
   :config
   (require 'boon-qwerty)
 
-  (require 'boon-powerline)
-  (boon-powerline-theme)
+  ; powerline is an older modeline package, distinct from doom modeline.
+  ; No point in running both.
+  ;(require 'boon-powerline)
+  ;(boon-powerline-theme)
 
 
   (defun my-special-mode-class-p ()
