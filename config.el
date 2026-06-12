@@ -337,31 +337,79 @@ are open."
     (kbd alt-dbl-tap)
     ))
 
-(map! :map 'key-translation-map alt-tap-wsl #'translate-to-leader)
-(map! :map 'key-translation-map alt-tap #'translate-to-leader)
-(map! :map 'input-decode-map alt-tap-term-raw (kbd alt-tap))
+(defvar my-esc-pred nil)
+(defvar my-esc-delay 0.01)
 
-(map! :map 'key-translation-map o-hold-wsl (kbd (concat "C-c " alt-tap)))
-(map! :map 'key-translation-map o-hold (kbd (concat "C-c " alt-tap)))
+; Modified from evil-esc from evil-core.el
+(defun my-esc (map)
+  "Translate \\e to `escape' if no further event arrives.
+This function is used to translate a \\e event either to `escape'
+or to the standard ESC prefix translation map. If \\e arrives,
+this function waits for `my-esc-delay' seconds for another
+event. If no other event arrives, the event is translated to
+`escape', otherwise it is translated to the standard ESC prefix
+map stored in `input-decode-map'. When `my-esc-pred' is
+a function that returns false, the event is
+translated to the ESC prefix.
 
-(map! :map 'key-translation-map alt-dbl-tap-wsl #'translate-to-localleader)
-(map! :map 'key-translation-map alt-dbl-tap #'translate-to-localleader)
-(map! :map 'input-decode-map alt-dbl-tap-term-raw #'translate-to-localleader)
+The translation to `escape' happens only if the current command
+has indeed been triggered by \\e. In other words, this will only
+happen when the keymap is accessed from `read-key-sequence'. In
+particular, if it is access from `define-key' the returned
+mapping will always be the ESC prefix map."
+  (if (and (or (not my-esc-pred) (funcall my-esc-pred))
+           (let ((keys (this-single-command-keys)))
+             (and (> (length keys) 0)
+                  (= (aref keys (1- (length keys))) ?\e)))
+           (sit-for my-esc-delay))
+      (prog1 [escape]
+        (when defining-kbd-macro
+          (end-kbd-macro)
+          (setq last-kbd-macro (vconcat last-kbd-macro [escape]))
+          (start-kbd-macro t t)))
+    map))
 
-; I have a number of old wsl-specific duplicate keybindings
-; before I added this, and I don't feel like cleaning them up,
-; but try to rely on this from now on.
-; Does not work for other key-translations however; we can't have duplicate
-; translations, so those cannot be used
-; here.
-; If their respective translations do not handle this, we'll need to continue specifying both.
-; Update as needed.
-(map! :map 'key-translation-map
-      ctl-tap-wsl ctl-tap
-      ctl-dbl-tap-wsl ctl-dbl-tap)
-(map! :map 'input-decode-map
-      ctl-tap-term-raw (kbd ctl-tap)
-      ctl-dbl-tap-term-raw (kbd ctl-dbl-tap))
+; Must place all modifications to the low-level key maps here;
+; They are "terminal-local" variables, which means they will be reset
+; for any frames in a second terminal window.
+(defun my-init-key-translation-maps ()
+  (map! :map 'key-translation-map alt-tap-wsl #'translate-to-leader)
+  (map! :map 'key-translation-map alt-tap #'translate-to-leader)
+  (map! :map 'input-decode-map alt-tap-term-raw (kbd alt-tap))
+
+  (map! :map 'key-translation-map o-hold-wsl (kbd (concat "C-c " alt-tap)))
+  (map! :map 'key-translation-map o-hold (kbd (concat "C-c " alt-tap)))
+
+  (map! :map 'key-translation-map alt-dbl-tap-wsl #'translate-to-localleader)
+  (map! :map 'key-translation-map alt-dbl-tap #'translate-to-localleader)
+  (map! :map 'input-decode-map alt-dbl-tap-term-raw #'translate-to-localleader)
+
+  ; I have a number of old wsl-specific duplicate keybindings
+  ; before I added this, and I don't feel like cleaning them up,
+  ; but try to rely on this from now on.
+  ; Does not work for other key-translations however; we can't have duplicate
+  ; translations, so those cannot be used
+  ; here.
+  ; If their respective translations do not handle this, we'll need to continue specifying both.
+  ; Update as needed.
+  (map! :map 'key-translation-map
+        ctl-tap-wsl ctl-tap
+        ctl-dbl-tap-wsl ctl-dbl-tap)
+  (map! :map 'input-decode-map
+        ctl-tap-term-raw (kbd ctl-tap)
+        ctl-dbl-tap-term-raw (kbd ctl-dbl-tap))
+
+  ; Based on evil-init-esc from evil-core.el
+  ; My alt-taps don't work without it.
+  (let ((esc-map (lookup-key input-decode-map [?\e])))
+    (map! :map input-decode-map [?\e]
+          `(menu-item "" ,esc-map :filter ,#'my-esc)))
+  )
+(unless (daemonp) (my-init-key-translation-maps))
+(add-hook 'server-after-make-frame-hook #'my-init-key-translation-maps)
+
+; Suppress evil's ESC handling in favor of our version.
+(setq evil-intercept-esc nil)
 
 (defun evil-exit-emacs-state-unless-god ()
   (interactive)
@@ -490,6 +538,14 @@ are open."
 (defun update-evil-emacs-cursor ()
   (evil-set-cursor #'my-evil-emacs-cursor-fn)
   )
+
+; Based on conditions in evil-esc from evil-core.el, but adds my own.
+(setq my-esc-pred (lambda () (and
+                         (not (bound-and-true-p boon-command-state))
+                         (or evil-local-mode (evil-ex-p)
+                             (active-minibuffer-window))
+                         (not (bound-and-true-p god-local-mode))
+                         )))
 
 (defun boon-exit-insert-state-unless-god ()
   (interactive)
@@ -652,6 +708,55 @@ are open."
         "<return>" #'org-return)
 
   (map! :leader :desc "boon" alt-tap boon-command-map)
+
+  ; I am not using evil mode much; more convenient for C-z to be boon when I only
+  ; have a laptop keyboard.
+  ; Can use <leader> z to access visual modes directly.
+  (after! evil
+    ; It is too late to set evil-toggle-key.
+    ; For whatever reason, this fails if we try to set that too.
+    (evil-set-toggle-key "C-M-z")
+
+    ; To keep a consistent state, don't allow switching evil states from boon.
+    (map! :map boon-command-map "C-M-z" #'ignore)
+    )
+
+  (map! :nvomr "C-z" #'evil-emacs-state
+        (:map boon-insert-map
+         :ei "C-z" #'boon-set-command-state)
+        (:map boon-special-map
+         :ei "C-z" #'boon-set-command-state)
+        (:map boon-command-map
+         "C-z" #'boon-set-insert-like-state))
+
+  ; Redefine quit bindings to not overwrite evil
+
+  (map! :map boon-command-map boon-quit-key nil)
+  (map! :map boon-command-map :ei boon-quit-key #'boon-quit)
+
+  (map! :map boon-special-map boon-quit-key nil)
+  (map! :map boon-special-map :ei boon-quit-key #'boon-set-command-state)
+
+  (map! :map boon-insert-map boon-quit-key nil)
+  (map! :map boon-insert-map :ei boon-quit-key #'boon-set-command-state)
+
+  (map! :map global-map boon-quit-key nil)
+  (map! :map global-map :ei boon-quit-key #'keyboard-quit)
+
+  (map! :map minibuffer-local-map boon-quit-key nil)
+  (map! :map minibuffer-local-map :ei boon-quit-key #'keyboard-quit)
+
+  (map! :map minibuffer-local-ns-map boon-quit-key nil)
+  (map! :map minibuffer-local-ns-map :ei boon-quit-key #'keyboard-quit)
+
+  (map! :map minibuffer-local-completion-map boon-quit-key nil)
+  (map! :map minibuffer-local-completion-map :ei boon-quit-key #'keyboard-quit)
+
+  (map! :map minibuffer-local-must-match-map boon-quit-key nil)
+  (map! :map minibuffer-local-must-match-map :ei boon-quit-key 'keyboard-quit)
+
+  (map! :map isearch-mode-map boon-quit-key nil)
+  (map! :map isearch-mode-map :ei boon-quit-key 'isearch-abort)
   )
 
 (use-package! theist-mode
