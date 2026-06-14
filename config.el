@@ -73,6 +73,52 @@ are open."
 (setq doom-scratch-initial-major-mode 'lisp-interaction-mode)
 
 
+; Compenstates for cursor functionality assumed in this file
+(unless (modulep! :editor evil)
+  ; Copied from evil-core.el
+
+  (defun evil-set-cursor-color (color)
+    "Set the cursor color to COLOR."
+    (unless (equal (frame-parameter nil 'cursor-color) color)
+      ;; `set-cursor-color' forces a redisplay, so only
+      ;; call it when the color actually changes
+      (set-cursor-color color)))
+  (defun +evil-update-cursor-color-h ()
+      ;; Use a flashy color for emacs state.
+      (put 'cursor 'evil-emacs-color  (face-foreground 'warning))
+      (put 'cursor 'evil-normal-color (face-background 'cursor)))
+  (defun +evil-default-cursor-fn ()
+    (evil-set-cursor-color (get 'cursor 'evil-normal-color)))
+  (defun +evil-emacs-cursor-fn ()
+    (evil-set-cursor-color (get 'cursor 'evil-emacs-color)))
+
+  (defun evil-set-cursor (specs)
+  "Change the cursor's apperance according to SPECS.
+SPECS may be a cursor type as per `cursor-type', a color
+string as passed to `set-cursor-color', a zero-argument
+function for changing the cursor, or a list of the above.
+
+If SPECS is nil, this function does not have an effect;
+pass (list nil) instead to indicate a nil `cursor-type'
+\(i.e., to disable the cursor)."
+  (unless (and (not (functionp specs))
+               (listp specs)
+               (null (cdr-safe (last specs))))
+    (setq specs (list specs)))
+  (dolist (spec specs)
+    (cond
+     ((functionp spec)
+      (ignore-errors (funcall spec)))
+     ((stringp spec)
+      (evil-set-cursor-color spec))
+     (t
+      (setq cursor-type spec)))))
+
+  (setq evil-state 'emacs)
+  (defun evil-emacs-state-p () t)
+  )
+
+
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets.
 ;(setq user-full-name "John Doe"
@@ -542,7 +588,7 @@ mapping will always be the ESC prefix map."
 ; Based on conditions in evil-esc from evil-core.el, but adds my own.
 (setq my-esc-pred (lambda () (and
                          (not (bound-and-true-p boon-command-state))
-                         (or evil-local-mode (evil-ex-p)
+                         (or (not (boundp 'evil-local-mode)) evil-local-mode (evil-ex-p)
                              (active-minibuffer-window))
                          (not (bound-and-true-p god-local-mode))
                          )))
@@ -555,6 +601,9 @@ mapping will always be the ESC prefix map."
 (use-package! boon
   :config
   (require 'boon-qwerty)
+
+  ; We need to run our redirected bindings after boon-qwerty has been loaded.
+  (provide 'my-redirect-evil-to-boon)
 
   ; powerline is an older modeline package, distinct from doom modeline.
   ; No point in running both.
@@ -721,7 +770,7 @@ mapping will always be the ESC prefix map."
     (map! :map boon-command-map "C-M-z" #'ignore)
     )
 
-  (map! :nvomr "C-z" #'evil-emacs-state
+  (map! (:after evil :nvomr "C-z" #'evil-emacs-state)
         (:map boon-insert-map
          :ei "C-z" #'boon-set-command-state)
         (:map boon-special-map
@@ -731,32 +780,35 @@ mapping will always be the ESC prefix map."
 
   ; Redefine quit bindings to not overwrite evil
 
-  (map! :map boon-command-map boon-quit-key nil)
-  (map! :map boon-command-map :ei boon-quit-key #'boon-quit)
+  (when (modulep! :editor evil)
+    (map! :map boon-command-map boon-quit-key nil)
+    (map! :map boon-command-map :ei boon-quit-key #'boon-quit)
 
-  (map! :map boon-special-map boon-quit-key nil)
-  (map! :map boon-special-map :ei boon-quit-key #'boon-set-command-state)
+    (map! :map boon-special-map boon-quit-key nil)
+    (map! :map boon-special-map :ei boon-quit-key #'boon-set-command-state)
 
-  (map! :map boon-insert-map boon-quit-key nil)
-  (map! :map boon-insert-map :ei boon-quit-key #'boon-set-command-state)
+    (map! :map boon-insert-map boon-quit-key nil)
+    (map! :map boon-insert-map :ei boon-quit-key #'boon-set-command-state)
 
-  (map! :map global-map boon-quit-key nil)
-  (map! :map global-map :ei boon-quit-key #'keyboard-quit)
+    (map! :map global-map boon-quit-key nil)
+    (map! :map global-map :ei boon-quit-key #'keyboard-quit)
 
-  (map! :map minibuffer-local-map boon-quit-key nil)
-  (map! :map minibuffer-local-map :ei boon-quit-key #'keyboard-quit)
+    (map! :map minibuffer-local-map boon-quit-key nil)
+    (map! :map minibuffer-local-map :ei boon-quit-key #'keyboard-quit)
 
-  (map! :map minibuffer-local-ns-map boon-quit-key nil)
-  (map! :map minibuffer-local-ns-map :ei boon-quit-key #'keyboard-quit)
+    (map! :map minibuffer-local-ns-map boon-quit-key nil)
+    (map! :map minibuffer-local-ns-map :ei boon-quit-key #'keyboard-quit)
 
-  (map! :map minibuffer-local-completion-map boon-quit-key nil)
-  (map! :map minibuffer-local-completion-map :ei boon-quit-key #'keyboard-quit)
+    (map! :map minibuffer-local-completion-map boon-quit-key nil)
+    (map! :map minibuffer-local-completion-map :ei boon-quit-key #'keyboard-quit)
 
-  (map! :map minibuffer-local-must-match-map boon-quit-key nil)
-  (map! :map minibuffer-local-must-match-map :ei boon-quit-key 'keyboard-quit)
+    (map! :map minibuffer-local-must-match-map boon-quit-key nil)
+    (map! :map minibuffer-local-must-match-map :ei boon-quit-key 'keyboard-quit)
 
-  (map! :map isearch-mode-map boon-quit-key nil)
-  (map! :map isearch-mode-map :ei boon-quit-key 'isearch-abort)
+    (map! :map isearch-mode-map boon-quit-key nil)
+    (map! :map isearch-mode-map :ei boon-quit-key 'isearch-abort))
+
+  (map! :n "gz" (lambda () (interactive) (message "Test")))
   )
 
 (use-package! theist-mode
@@ -1591,7 +1643,7 @@ mapping will always be the ESC prefix map."
   (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
 )
 
-(after! org
+(after! '(org evil)
   (advice-add #'org-mode-restart :around
               (lambda (orig-fn)
                 (let ((current-evil-state evil-state))

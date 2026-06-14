@@ -14,6 +14,17 @@
 ;;      Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
 ;;      directory (for easy access to its source code).
 
+(defconst my-enable-evil t)
+(defconst my-enable-evil-everywhere nil)
+(defconst my-redirect-evil-emacs-maps t)
+(defconst my-redirect-evil-maps t)
+(defconst my-log-evil-keybinds nil)
+(defconst my-enable-evil-like-keymap nil)
+; Needed for bindings to behave as expected;
+; I imagine that my setting in config.el is probably too late for insert.
+; I have configured it so that if this is nil, we will ignore insert bindings.
+(setq evil-disable-insert-state-bindings t)
+
 (doom! :input
        ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
        ;;chinese
@@ -54,7 +65,9 @@
        ;;zen               ; distraction-free coding or writing
 
        :editor
-       (evil +everywhere); come to the dark side, we have cookies
+       (:if (and my-enable-evil my-enable-evil-everywhere) (evil +everywhere))
+       (:if (and my-enable-evil (not my-enable-evil-everywhere)) evil)
+       ;(evil +everywhere); come to the dark side, we have cookies
        file-templates    ; auto-snippets for empty files
        fold              ; (nigh) universal code folding
        ;;(format +onsave)  ; automated prettiness
@@ -198,3 +211,135 @@
        :config
        ;;literate
        (default +bindings +smartparens))
+
+
+(when my-log-evil-keybinds
+  (setq message-log-max (* message-log-max 10))
+  )
+
+(static-when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
+  (add-hook
+   'doom-before-modules-init-hook
+   (defun my-redirect-evil-maps ()
+
+     (defmacro my-after-boon-keymap (&rest body)
+         `(after! my-redirect-evil-to-boon ,@body)
+         )
+
+     (static-when my-enable-evil-like-keymap
+       (defvar my-evil-like-keymap (make-sparse-keymap "Extra keymap for unredirected evil bindings to go")))
+
+     (defun my/keymap-major-mode-p (keymap-symbol)
+       "Return the major mode that uses KEYMAP-SYMBOL, or nil."
+       (and (boundp keymap-symbol)
+            (keymapp (symbol-value keymap-symbol))
+            (string-suffix-p "-map" (symbol-name keymap-symbol))
+            (let ((mode (intern-soft (string-remove-suffix "-map"
+                                                           (symbol-name keymap-symbol)))))
+              (and mode
+                   (fboundp mode)
+                   (or (get mode 'derived-mode-parent)
+                       (get mode 'mode-class)
+                       (rassq mode auto-mode-alist)
+                       (rassq mode interpreter-mode-alist))
+                   mode))))
+
+     (defun my/get-boon-mode-map (maps state)
+       (cond
+        ((null maps) nil)
+        ((listp maps) (remq nil (mapcar (lambda (m) (my/get-boon-mode-map m state)) maps)))
+        (t
+         (if-let ((mode (my/keymap-major-mode-p maps))
+                  (boon-map-cell (cond
+                                  ((memq state '(normal operator motion replace))
+                                   '(boon-map . boon-command-map))
+                                  (t nil)))
+                  )
+             (let* ((boon-map-property (car boon-map-cell))
+                    (boon-map (cdr boon-map-cell))
+                    (boon-map-sym (intern (format "my/boon-%s-%s-map" mode state)))
+                    (keymap (get mode boon-map-property)))
+               (when (null keymap)
+                 (setq keymap (make-sparse-keymap (format "Boon %s keymap for %s" state mode)))
+                 (put mode boon-map-property keymap)
+                 (after! boon (set-keymap-parent keymap (eval boon-map))))
+               (unless (and (boundp boon-map-sym) (eq (symbol-value boon-map-sym) keymap))
+                 (set boon-map-sym keymap))
+               boon-map-sym)
+           nil))))
+
+       (defun my-sequence-starts-with-modifier-p (key-seq)
+         "Return t if KEY-SEQ (vector, string, symbol, or list) begins with a modifier."
+         (let ((first-event (cond
+                             ((vectorp key-seq) (and (> (length key-seq) 0) (elt key-seq 0)))
+                             ((stringp key-seq) (and (> (length key-seq) 0) (elt key-seq 0)))
+                             ((listp key-seq)   (car key-seq))
+                             (t                 key-seq)))) ; Handles single symbol/integer
+           (and first-event
+                (or
+                 (not (null (event-modifiers first-event)))
+                 (eq first-event ?g)
+                 ))))
+
+       (defun doom--map-commit ()
+         (when doom--map-batch-forms
+           (cl-loop with attrs = (doom--map-state)
+                    with keymaps = (plist-get attrs :keymaps)
+                    for (state . defs) in doom--map-batch-forms
+                    if (or my-enable-evil (not state) (eq state 'emacs) (eq state 'insert) (eq state 'normal) (eq state 'motion))
+                    collect
+                    `(progn
+                       ,(static-when my-enable-evil
+                          `(,(or doom--map-fn 'general-define-key)
+                            ,@(if state `(:states ',state)) ,@attrs
+                            ,@(mapcan #'copy-sequence (nreverse defs))))
+                       ,(cond
+                         ((or (not state) (eq state 'emacs) (and evil-disable-insert-state-bindings (eq state 'insert)))
+                          `(,(or doom--map-fn 'general-define-key)
+                            ,@attrs
+                            ,@(mapcan #'identity (nreverse defs))))
+                         ((static-if (or my-redirect-evil-maps my-enable-evil-like-keymap)
+                              (and (or (eq state 'normal) (eq state 'motion))
+                                   (or (null keymaps) (static-when my-enable-evil-like-keymap (eq keymaps 'evil-like-keymap))))
+                            nil)
+                          (let ((split (cl-loop for def in defs
+                                                if (or
+                                                    (plist-get attrs :prefix)
+                                                    (my-sequence-starts-with-modifier-p (car def)))
+                                                collect (copy-sequence def) into with-modifiers
+                                                collect def into all
+                                                finally return (cons with-modifiers all))))
+                            (static-when my-log-evil-keybinds
+                              (message "Evil Global Normal Keybind: State %s Attrs %s Defs %s" state attrs defs)
+                              )
+                            `(progn
+                               ,(static-when my-redirect-evil-maps
+                                  (when (car split)
+                                        ; Must run after boon-qwerty is loaded, which happens in config.el
+                                    `(my-after-boon-keymap
+                                      (,(or doom--map-fn 'general-define-key)
+                                       ,@(plist-put attrs :keymaps ''boon-command-map)
+                                       ,@(mapcan #'identity (nreverse (car split))))
+                                      )))
+                               ,(static-when my-enable-evil-like-keymap
+                                  `(,(or doom--map-fn 'general-define-key)
+                                    ,@(plist-put attrs :keymaps ''my-evil-like-keymap)
+                                    ,@(mapcan #'identity (nreverse (cdr split)))))
+                               )))
+                         ((and keymaps (or (eq state 'normal) (eq state 'motion)))
+                          (static-when my-log-evil-keybinds
+                            (message "Evil Map Normal Keybind: State %s Attrs %s Defs %s" state attrs defs)
+                            )
+                          `(if-let* ((boon-maps (my/get-boon-mode-map ',(eval keymaps) ',state)))
+                               (apply ,(symbol-function (or doom--map-fn 'general-define-key))
+                                      (append
+                                       (plist-put ',attrs :keymaps boon-maps)
+                                       ',(mapcan #'identity (nreverse defs))))
+                               nil)
+                             )
+                         (t nil)))
+                    into forms
+                    finally do (push (macroexp-progn forms) doom--map-forms))
+           (setq doom--map-batch-forms nil)
+           )))
+     ))
