@@ -3,3 +3,4 @@ private.el
 local-font-config.el
 debug-adapters
 *.local.el
+*.elc
