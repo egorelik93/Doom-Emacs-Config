@@ -255,7 +255,8 @@
 
       ;;; <leader> t --- toggle
       (:prefix-map ("t" . "toggle")
-       :desc "Goggles"                       "g" #'goggles-mode
+                   (:when (modulep! :ui ophints) :desc "Goggles" "g" #'goggles-mode)
+                   (:unless (modulep! :ui ophints) "g" nil)
        )
       )
 
