@@ -467,7 +467,8 @@ mapping will always be the ESC prefix map."
 
 ; I like the idea, but other than hjkl I just can't get
 ; used to the commands.
-(map! ; :e ctl-tap-wsl #'evil-exit-emacs-state-unless-god
+(map! :after evil
+      ; :e ctl-tap-wsl #'evil-exit-emacs-state-unless-god
       ; :e ctl-tap #'evil-exit-emacs-state-unless-god
       :nm ctl-tap-wsl #'evil-emacs-state
       :nm ctl-tap #'evil-emacs-state
@@ -811,8 +812,6 @@ mapping will always be the ESC prefix map."
 
     (map! :map isearch-mode-map boon-quit-key nil)
     (map! :map isearch-mode-map :ei boon-quit-key 'isearch-abort))
-
-  (map! :n "gz" (lambda () (interactive) (message "Test")))
   )
 
 (use-package! theist-mode
@@ -875,10 +874,11 @@ mapping will always be the ESC prefix map."
   ; Not really what god mode is meant for, but I like this.
   ; Easier than trying to learn evil mode just to use hjkl.
   (map! :map god-local-mode-map
-        "j" #'evil-next-line
-        "k" #'evil-previous-line
-        "h" #'evil-backward-char
-        "l" #'evil-forward-char
+        (:after evil
+         "j" #'evil-next-line
+         "k" #'evil-previous-line
+         "h" #'evil-backward-char
+         "l" #'evil-forward-char)
         ; Doesn't seem to override other custom shortcuts
         ; Make sure to configure taps in other maps to not change the evil state if in god mode.
         :g ctl-dbl-tap-wsl #'god-local-mode
@@ -1145,7 +1145,8 @@ mapping will always be the ESC prefix map."
 
   (map! :ei "C-." #'completion-at-point)
   (map! :map 'corfu-map
-        "C-\t" #'corfu-reset
+        "C-TAB" #'corfu-reset
+        "C-<tab>" #'corfu-reset
         "<down>" #'my/corfu-next-or-down
         "<up>" #'my/corfu-prev-or-up
         :e "C-\r" #'corfu-quit
@@ -1153,6 +1154,14 @@ mapping will always be the ESC prefix map."
         :e ctl-tap #'corfu-quit
         :e ctl-tap-wsl #'corfu-quit
         :ei "C-." #'corfu-insert-separator)
+
+  ; Make <escape> in corfu popup quit the popup
+  ; https://github.com/emacs-evil/evil-collection/issues/676#issuecomment-1604386513
+  (defvar my-corfu-override-keymap-alist '())
+  (add-to-ordered-list 'emulation-mode-map-alists 'my-corfu-override-keymap-alist 0)
+  (add-hook 'my-corfu-override-keymap-alist
+            `(completion-in-region-mode . ,(define-keymap "<escape>" #'corfu-quit)))
+
   (setq corfu-max-width 80)
 
   (setq corfu-preselect 'valid)

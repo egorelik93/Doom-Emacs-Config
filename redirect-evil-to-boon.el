@@ -71,6 +71,9 @@
            (static-when (not my-enable-evil)
              `((or (not state) (eq state 'emacs) (eq state 'global)
                    (and evil-disable-insert-state-bindings (eq state 'insert)))
+               ,@(static-when my-log-evil-keybinds
+                `((message "Emacs Keybind: State %s Attrs %s Defs %s" state attrs defs))
+                )
                `(,(or doom--map-fn 'general-define-key)
                  ,@attrs
                  ,@(mapcan #'identity (nreverse defs))))
