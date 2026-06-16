@@ -158,7 +158,10 @@
                       `(nconc ,collection)
                     `(collect ,collection))
                 into forms
-                finally do (push (macroexp-progn forms) doom--map-forms))
+                finally do
+                ,@(static-when my-log-evil-keybinds
+                    '((message "%S" forms)))
+                (push (macroexp-progn forms) doom--map-forms))
        (setq doom--map-batch-forms nil)
        )
     ))
