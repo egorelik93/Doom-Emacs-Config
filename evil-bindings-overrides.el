@@ -255,7 +255,7 @@
 
       ;;; <leader> t --- toggle
       (:prefix-map ("t" . "toggle")
-       :desc "Evil goggle"                 "g" nil
+       :desc "Goggles"                       "g" #'goggles-mode
        )
       )
 
