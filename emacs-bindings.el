@@ -3,9 +3,9 @@
 ; Copied from config/default/+emacs-bindings.el.
 ; Since I keep evil on as an option, I am not getting those bindings automatically.
 
-(setopt persp-keymap-prefix (kbd "C-c w"))
-(after! projectile
-  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
+;(setopt persp-keymap-prefix (kbd "C-c w"))
+;(after! projectile
+;  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
 
 
 ;;

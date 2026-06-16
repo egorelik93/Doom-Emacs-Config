@@ -4,3 +4,4 @@ local-font-config.el
 debug-adapters
 *.local.el
 *.elc
+all-bindings.el

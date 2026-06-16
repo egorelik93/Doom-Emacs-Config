@@ -122,18 +122,18 @@
                             (,(or doom--map-fn 'general-define-key)
                              ,@(plist-put attrs :keymaps ''boon-command-map)
                              ,@(mapcan #'identity (nreverse with-modifiers))
-                            )))
+                            ))))
                      (static-when my-enable-evil-like-keymap
                        ``(,(or doom--map-fn 'general-define-key)
                           ,@(plist-put attrs :keymaps ''my-evil-like-keymap)
                           ,@(mapcan #'identity (nreverse all-defs))))
-                     )))))))
+                     ))))))
            `((and keymaps (or (eq state 'normal) (eq state 'motion)))
              ,@(static-when my-log-evil-keybinds
                 `((message "Evil Map Normal Keybind: State %s Attrs %s Defs %s" state attrs defs))
                 )
              `(when-let* ((boon-maps (my/get-boon-mode-map ',(eval keymaps) ',state)))
-                  (apply ,(symbol-function (or doom--map-fn 'general-define-key))
+                  (apply #',(or doom--map-fn 'general-define-key)
                          (append
                           (plist-put ',attrs :keymaps boon-maps)
                           ',(mapcan ,(static-if my-enable-evil `#'copy-sequence `#'identity) (nreverse defs)))))

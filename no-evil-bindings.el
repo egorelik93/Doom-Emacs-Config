@@ -2,7 +2,7 @@
 
 ; Modified from config/default/+evil-bindings.el.
 
-(load! "no-evil-windows.el")
+(load! "no-evil-windows.elc")
 
 ;;
 ;;; Global keybindings
@@ -93,24 +93,24 @@
 
       (:when (modulep! :editor multiple-cursors)
         :prefix "gz"
-        :nv "l" :desc "Mark next" #'mc/mark-next-like-this
-        :nv "j" :desc "Mark previous" #'mc/mark-previous-like-this
+        :desc "Mark next" :nv "l" #'mc/mark-next-like-this
+        :desc "Mark previous" :nv "j" #'mc/mark-previous-like-this
         :nv "L" #'mc/skip-to-next-like-this
         :nv "J" #'mc/skip-to-previous-like-this
-        :nv "C-j" :desc "Unmark previous" #'mc/unmark-previous-like-this
-        :nv "C-l" :desc "Unmark next" #'mc/unmark-next-like-this
+        :desc "Unmark previous" :nv "C-j" #'mc/unmark-previous-like-this
+        :desc "Unmark next" :nv "C-l" #'mc/unmark-next-like-this
         :nv "l" #'mc/mark-next-lines
         :nv "i" #'mc/mark-previous-lines
-        :nv "m" :desc "Mark all" #'mc/mark-all-like-this
-        :nv "M" :desc "Mark all DWIM" #'mc/mark-all-like-this-dwim
+        :desc "Mark all" :nv "m" #'mc/mark-all-like-this
+        :desc "Mark all DWIM" :nv "M" #'mc/mark-all-like-this-dwim
         :nv "q" #'mc/keyboard-quit
         :nv "t" #'mc/toggle-cursor-on-click
-        :nv "h" :desc "Edit line starts" #'mc/edit-beginnings-of-lines
-        :nv ";" :desc "Edit line endings" #'mc/edit-ends-of-lines
-        :nv :desc "Edit lines" "v" #'mc/edit-lines
-        :nv :desc "Mark tag" "s" #'mc/mark-sgml-tag-pair
+        :desc "Edit line starts" :nv "h" #'mc/edit-beginnings-of-lines
+        :desc "Edit line endings" :nv ";" #'mc/edit-ends-of-lines
+        :desc "Edit lines" :nv "v" #'mc/edit-lines
+        :desc "Mark tag" :nv "s" #'mc/mark-sgml-tag-pair
         :nv "a" #'mc/mark-all-like-this-in-defun
-        :nv :desc "Add cursor w/mouse" "<mouse-1>" #'mc/add-cursor-on-click)
+        :desc "Add cursor w/mouse" :nv "<mouse-1>" #'mc/add-cursor-on-click)
 
       ;; misc
       :n "C-S-f"  #'toggle-frame-fullscreen
@@ -445,7 +445,12 @@
        :desc "Revert buffer"               "r"   #'revert-buffer
        :desc "Rename buffer"               "R"   #'rename-buffer
        :desc "Save buffer"                 "s"   #'basic-save-buffer
-       :desc "Save all buffers"            "S"   #'evil-write-all
+       :desc "Save all buffers"            "S"   (defun my-save-all ()
+                                                   (interactive)
+                                                   (save-some-buffers t
+                                                                      #'(lambda ()
+                                                                          (and (not buffer-read-only)
+                                                                               (buffer-file-name)))))
        :desc "Save buffer as root"         "u"   #'doom/sudo-save-buffer
        :desc "Pop up scratch buffer"       "x"   #'doom/open-scratch-buffer
        :desc "Switch to scratch buffer"    "X"   #'doom/switch-to-scratch-buffer
@@ -803,7 +808,11 @@
        :desc "Clear current frame"          "F" #'doom/kill-all-buffers
        :desc "Kill Emacs (and daemon)"      "K" #'save-buffers-kill-emacs
        :desc "Quit Emacs"                   "q" #'save-buffers-kill-terminal
-       :desc "Quit Emacs without saving"    "Q" #'evil-quit-all-with-error-code
+       :desc "Quit Emacs without saving"    "Q" (defun my-quit-all-with-error-code ()
+                                                  (interactive)
+                                                  (if (bound-and-true-p server-buffer-clients)
+                                                      (user-error "Cannot exit client process with error code")
+                                                    (kill-emacs (or err-code 1))))
        :desc "Quick save current session"   "s" #'doom/quicksave-session
        :desc "Restore last session"         "l" #'doom/quickload-session
        :desc "Save session to file"         "S" #'doom/save-session
@@ -848,7 +857,7 @@
              ((modulep! :completion helm)      #'helm-imenu-in-all-buffers))
        :desc "Jump to visible link"         "l" #'link-hint-open-link
        :desc "Jump to link"                 "L" #'ffap-menu
-       :desc "Jump list"                    "j" #'evil-show-jumps
+       :desc "Jump list"                    "j" #'consult-global-mark
        :desc "Jump to bookmark"             "m" #'bookmark-jump
        :desc "Look up online"               "o" #'+lookup/online
        :desc "Look up online (w/ prompt)"   "O" #'+lookup/online-select
@@ -856,7 +865,7 @@
        :desc "Look up in all docsets"       "K" #'+lookup/in-all-docsets
        :desc "Search project"               "p" #'+default/search-project
        :desc "Search other project"         "P" #'+default/search-other-project
-       :desc "Jump to mark"                 "r" #'evil-show-marks
+       :desc "Jump to mark"                 "r" #'consult-mark
        :desc "Search buffer"                "s" #'+default/search-buffer
        :desc "Search buffer for thing at point" "S"
        (cond ((modulep! :completion vertico)   #'+vertico/search-symbol-at-point)
@@ -877,7 +886,7 @@
        (:when (modulep! :checkers syntax -flymake)
         :desc "Flycheck"                   "f" #'flycheck-mode)
        :desc "Frame fullscreen"             "F" #'toggle-frame-fullscreen
-       :desc "Evil goggles"                 "g" #'evil-goggles-mode
+       ;:desc "Evil goggles"                 "g" #'evil-goggles-mode
        (:when (modulep! :ui indent-guides)
         :desc "Indent guides"              "i" #'indent-bars-mode)
        :desc "Indent style"                 "I" #'doom/toggle-indent-style
