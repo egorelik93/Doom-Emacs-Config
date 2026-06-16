@@ -762,6 +762,9 @@ mapping will always be the ESC prefix map."
         "<return>" #'org-return)
 
   (map! :leader :desc "boon" alt-tap boon-command-map)
+  (unless (modulep! :editor evil)
+    (map! :e "M-o" boon-command-map)
+    )
 
   ; I am not using evil mode much; more convenient for C-z to be boon when I only
   ; have a laptop keyboard.
