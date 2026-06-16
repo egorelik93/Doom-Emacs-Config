@@ -749,12 +749,12 @@ mapping will always be the ESC prefix map."
   (map! :map 'boon-command-map ctl-tap #'boon-set-insert-like-state)
   (map! :map 'boon-command-map ctl-dbl-tap #'boon-set-insert-like-state)
 
-  (defvar +doom-dashboard-mode-boon-map (make-boon-map '+doom-dashboard-mode 'command +doom-dashboard-mode-map))
-  (defvar +doom-dashboard-mode-boon-special-map (make-boon-map '+doom-dashboard-mode 'special +doom-dashboard-mode-map))
+  (defvar +dashboard-mode-boon-map (make-boon-map '+dashboard-mode 'command +dashboard-mode-map))
+  (defvar +dashboard-mode-boon-special-map (make-boon-map '+dashboard-mode 'special +dashboard-mode-map))
 
-  (map! :map (+doom-dashboard-mode-boon-map +doom-dashboard-mode-boon-special-map)
-        "i" #'+doom-dashboard/backward-button
-        "k" #'+doom-dashboard/forward-button)
+  (map! :map (+dashboard-mode-boon-map +dashboard-mode-boon-special-map)
+        "i" #'+dashboard/backward-button
+        "k" #'+dashboard/forward-button)
 
   (defvar org-boon-map (make-boon-map 'org-mode 'command))
   (map! :map org-boon-map
@@ -822,8 +822,8 @@ mapping will always be the ESC prefix map."
   (map! :leader :desc "C-c" "M-c" #'theist-C-c)
   )
 
-;(map! :map '+doom-dashboard-mode-map "i" #'+doom-dashboard/backward-button)
-;(map! :map '+doom-dashboard-mode-map "k" #'+doom-dashboard/forward-button)
+;(map! :map '+dashboard-mode-map "i" #'+dashboard/backward-button)
+;(map! :map '+dashboard-mode-map "k" #'+dashboard/forward-button)
 
 ; Copied and modified from module
 
@@ -938,11 +938,11 @@ mapping will always be the ESC prefix map."
   (if (modulep! :editor evil)
       (progn (load! "emacs-bindings.el") (setopt persp-keymap-prefix (kbd "C-c W")))
     ;(load! "no-evil-bindings.el")
-    ;(load! "+evil-bindings" (file-name-concat doom-modules-dir "config" "default"))
+    ;(load! "+evil-bindings" (doom-module-locate-path '(:config . default)))
     ;(load! "evil-bindings-overrides")
 
     ; Attempting to replace by loading bindings manually.
-    ;(load! "+evil-bindings" (file-name-concat doom-modules-dir "config" "default"))
+    ;(load! "+evil-bindings" (doom-module-locate-path '(:config . default)))
     ;(load! "emacs-bindings")
     ;(load! "evil-bindings-overrides")
 
@@ -1412,7 +1412,7 @@ mapping will always be the ESC prefix map."
            (string-match-p "ediff" arg))
          command-line-args)
   ;(remove-hook 'window-setup-hook #'doom-init-ui-h)
-  (remove-hook 'doom-init-ui-hook #'+doom-dashboard-init-h)
+  (remove-hook 'doom-init-ui-hook #'+dashboard-init-h)
 )
 
 (after! ediff
@@ -1960,11 +1960,11 @@ in-place, the old list reference does not remain valid."
     (setcdr c (cons el (cdr c)))
     (cdr padded-list)))
 
-(insert-into-list +doom-dashboard-menu-sections 3
+(insert-into-list +dashboard-menu-sections 3
   '("Find org-roam node"
-    :icon (nerd-icons-icon-for-mode 'org-mode :face 'doom-dashboard-menu-title)
+    :icon (nerd-icons-icon-for-mode 'org-mode :face 'dashboard-menu-title)
     :when (modulep! :lang org +roam)
-    :face (:inherit (doom-dashboard-menu-title bold))
+    :face (:inherit (dashboard-menu-title bold))
     :action org-roam-node-find))
 
 (after! org-protocol

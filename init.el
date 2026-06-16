@@ -26,10 +26,10 @@
 ; I have configured it so that if this is nil, we will ignore insert bindings.
 (setq evil-disable-insert-state-bindings t)
 
-(setq my-keybindings-files
+(defun my-keybindings-files ()
       (list
-       ;(expand-file-name "+emacs-bindings.el" (file-name-concat doom-modules-dir "config" "default"))
-       (expand-file-name "+evil-bindings.el" (file-name-concat doom-modules-dir "config" "default"))
+       ;(expand-file-name "+emacs-bindings.el" (doom-module-locate-path '(:config . default)))
+       (expand-file-name "+evil-bindings.el" (doom-module-locate-path '(:config . default)))
        (expand-file-name "emacs-bindings.el" doom-user-dir)
        ;(expand-file-name "no-evil-bindings.el" doom-user-dir)
        (expand-file-name "evil-bindings-overrides.el" doom-user-dir)
@@ -52,7 +52,7 @@
        :ui
        ;;deft              ; notational velocity for Emacs
        doom              ; what makes DOOM look the way it does
-       doom-dashboard    ; a nifty splash screen for Emacs
+       dashboard    ; a nifty splash screen for Emacs
        doom-quit         ; DOOM quit-message prompts when you quit Emacs
        ;;(emoji +unicode)  ; 🙂
        hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
@@ -284,5 +284,5 @@
   (add-hook! 'doom-after-sync-hook
     (my-compile-doomdir-elisp "no-evil-windows.el")
     (print! "> Combining keybindings ...")
-    (apply #'my/combine-and-expand (expand-file-name "all-bindings.el" doom-user-dir) "my-run-all-bindings" my-keybindings-files))
+    (apply #'my/combine-and-expand (expand-file-name "all-bindings.el" doom-user-dir) "my-run-all-bindings" (my-keybindings-files)))
   )
