@@ -220,6 +220,12 @@ pass (list nil) instead to indicate a nil `cursor-type'
                    (t           (* 60 (+ (/ (- r1 g1) delta) 4)))))
                (h (if (< h 0) (+ h 360) h)))
           (cond
+           ;; Explicit palette mappings for purple/pink family
+           ((string-equal color "#bb99ee") "#b4009e")  ; mauve ? brightmagenta
+           ((string-equal color "#aabbee") "#881798")  ; lavender ? dark magenta
+           ((string-equal color "#eebbdd") "#b4009e")  ; pink ? brightmagenta
+           ((string-equal color "#eebbbb") "#cccccc")  ; flamingo ? white
+           ((string-equal color "#eecccc") "#cccccc")  ; rosewater ? white
            ;; Very dark ? black/transparent
            ((< lum 40) "#0c0c0c")
            ;; High luminance blue-purple ? white (catches text #bbccee)
@@ -233,17 +239,16 @@ pass (list nil) instead to indicate a nil `cursor-type'
            ;; Reds
            ((or (< h 15) (> h 340))
             (if (> lum 120) "#e74856" "#c50f1f"))
-           ;; Peach/orange ? red family
-           ((< h 40) "#e74856")
+           ;; Peach/orange ? dark red (distinct from bright red)
+           ((< h 40) "#c50f1f")
            ;; Yellow
            ((< h 70)
             (if (> lum 150) "#f9f1a5" "#c19c00"))
            ;; Green
            ((< h 165)
             (if (> lum 150) "#16c60c" "#13a10e"))
-           ;; Teal/cyan
-           ((< h 210)
-            (if (> lum 150) "#61d6d6" "#3a96dd"))
+           ;; Teal ? dark cyan (distinct from sky/brightcyan)
+           ((< h 210) "#3a96dd")
            ;; Sky/sapphire ? brightcyan
            ((< h 260) "#61d6d6")
            ;; Blue/lavender ? brightblue
@@ -254,7 +259,6 @@ pass (list nil) instead to indicate a nil `cursor-type'
 
     (advice-add 'catppuccin-quantize-color :filter-return #'my-catppuccin-quantize-to-16)
   )
-
   :config
 
   ; I discovered when trying to remove default +bindings,
