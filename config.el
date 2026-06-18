@@ -420,6 +420,13 @@ pass (list nil) instead to indicate a nil `cursor-type'
   (add-hook 'tty-setup-hook #'my-setup-wt-tty-colors)
   )
 
+(when (and (featurep :system 'windows) (not (display-graphic-p)))
+  (add-hook! 'tty-setup-hook
+    (unless (memq default-terminal-coding-system '(utf-8 cp65001 utf-8-dos utf-8-unix))
+        ; On CMD, this will cause the boon modeline icon to at least
+        ; show a state name instead of a code point.
+        (setq doom-modeline-icon nil))))
+
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/org/")
