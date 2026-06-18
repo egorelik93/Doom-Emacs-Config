@@ -2017,6 +2017,11 @@ mapping will always be the ESC prefix map."
 
 (after! vterm
   (setq vterm-min-window-width 40)
+
+
+  (defvar vterm-boon-insert-map (make-boon-map 'vterm-mode 'insert))
+  (map! :map vterm-boon-insert-map
+        "<escape>" #'vterm-send-escape)
   )
 
 (use-package! claude-code-ide
