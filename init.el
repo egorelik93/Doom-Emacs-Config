@@ -241,7 +241,7 @@
       (kill-buffer "*Compile-Log*"))
     ))
 
-(static-when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
+(when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
   (add-hook! 'doom-before-sync-hook
     (my-compile-doomdir-elisp "redirect-evil-to-boon.el"))
 
@@ -280,7 +280,7 @@
           (insert "\n")))
       (pp-buffer))))
 
-(static-unless my-enable-evil
+(unless my-enable-evil
   (add-hook! 'doom-after-sync-hook
     (my-compile-doomdir-elisp "no-evil-windows.el")
     (print! "> Combining keybindings ...")

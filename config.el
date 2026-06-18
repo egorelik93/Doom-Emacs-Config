@@ -184,6 +184,77 @@ pass (list nil) instead to indicate a nil `cursor-type'
   ))
 
 (use-package! catppuccin-theme
+  :init
+  ; Inside Windows CLIs, Catpuccin's 256-color quantization
+  ; gets mapped by emacs to something completely unusable.
+  ; We thus map it to 16 colors ourselves.
+  ;
+  ; Important requirements:
+  ; - Default text color must be "white".
+  ; - Background should be "black" (treated by Windows Terminal as transparent).
+  ; - Highlights are used by vertico and must be visible without being unreadable.
+  ; - If Highlights of the current line are visible (which they have to be because of prev point),
+  ;   then it should ideally be the same color as region selection.
+  (when (featurep :system 'windows)
+    ; Created by Claude
+    (defun my-catppuccin-quantize-to-16 (color)
+      "Map a 256-color quantized hex to a Campbell 16-color hex."
+      (when (and color (string-match-p "^#[0-9a-fA-F]\\{6\\}$" color))
+        (let* ((r (string-to-number (substring color 1 3) 16))
+               (g (string-to-number (substring color 3 5) 16))
+               (b (string-to-number (substring color 5 7) 16))
+               (lum (+ (* 0.299 r) (* 0.587 g) (* 0.114 b)))
+               (r1 (/ r 255.0))
+               (g1 (/ g 255.0))
+               (b1 (/ b 255.0))
+               (cmax (max r1 g1 b1))
+               (cmin (min r1 g1 b1))
+               (delta (- cmax cmin))
+               (l (/ (+ cmax cmin) 2.0))
+               (s (if (= delta 0) 0
+                    (/ delta (- 1 (abs (- (* 2 l) 1))))))
+               (h (cond
+                   ((= delta 0) 0)
+                   ((= cmax r1) (* 60 (mod (/ (- g1 b1) delta) 6)))
+                   ((= cmax g1) (* 60 (+ (/ (- b1 r1) delta) 2)))
+                   (t           (* 60 (+ (/ (- r1 g1) delta) 4)))))
+               (h (if (< h 0) (+ h 360) h)))
+          (cond
+           ;; Very dark ? black/transparent
+           ((< lum 40) "#0c0c0c")
+           ;; High luminance blue-purple ? white (catches text #bbccee)
+           ((and (> lum 150) (> h 200) (< h 310)) "#cccccc")
+           ;; Low saturation dispatch by luminance
+           ((<= s 0.20)
+            (cond
+             ((< lum 70)  "#0037da")   ; surface0/highlight/region ? dark blue
+             ((< lum 130) "#767676")   ; overlays/comments ? brightblack
+             (t           "#cccccc"))) ; subtext/text ? white
+           ;; Reds
+           ((or (< h 15) (> h 340))
+            (if (> lum 120) "#e74856" "#c50f1f"))
+           ;; Peach/orange ? red family
+           ((< h 40) "#e74856")
+           ;; Yellow
+           ((< h 70)
+            (if (> lum 150) "#f9f1a5" "#c19c00"))
+           ;; Green
+           ((< h 165)
+            (if (> lum 150) "#16c60c" "#13a10e"))
+           ;; Teal/cyan
+           ((< h 210)
+            (if (> lum 150) "#61d6d6" "#3a96dd"))
+           ;; Sky/sapphire ? brightcyan
+           ((< h 260) "#61d6d6")
+           ;; Blue/lavender ? brightblue
+           ((< h 310) "#3b78ff")
+           ;; Pink/mauve ? magenta family
+           (t
+            (if (> lum 150) "#b4009e" "#881798"))))))
+
+    (advice-add 'catppuccin-quantize-color :filter-return #'my-catppuccin-quantize-to-16)
+  )
+
   :config
 
   ; I discovered when trying to remove default +bindings,
@@ -265,10 +336,10 @@ pass (list nil) instead to indicate a nil `cursor-type'
            (not my-ef-themes-solaire-faces-do-not-recurse)
            (my-modus-theme-p loading-theme)
            ; For whatever reason, loading-theme is not directly available inside modus-themes-with-colors
-           (eq loading-theme (modus-themes-get-current-theme :no-enable)))
+           (eq loading-theme (modus-themes-get-current-theme)))
       (setq my-ef-themes-solaire-faces-do-not-recurse t)
       (modus-themes-with-colors
-        (let ((theme (modus-themes-get-current-theme :no-enable)))
+        (let ((theme (modus-themes-get-current-theme)))
           (custom-theme-set-faces!
            theme
            `(solaire-default-face :inherit default :background ,bg-dim :foreground ,fg-dim)
@@ -311,6 +382,42 @@ pass (list nil) instead to indicate a nil `cursor-type'
     ;(put doom-theme 'theme-feature t)
     (modus-themes-load-theme doom-theme)
     )
+  )
+
+; Emacs' only supports 16 colors on Windows CLIs,
+; but its assumed shades are nothing like the actual color scheme in Windows Terminal.
+; Emacs uses these values to compute the best approximation.
+
+; Created by Claude
+(defun my-hex-to-tty-rgb (hex)
+  "Convert hex color string to 0-65535 RGB list."
+  (list (* (string-to-number (substring hex 1 3) 16) 257)
+        (* (string-to-number (substring hex 3 5) 16) 257)
+        (* (string-to-number (substring hex 5 7) 16) 257)))
+
+(when (featurep :system 'windows)
+  ; According to the Campbell scheme that is Windows Terminal's default.
+  ; Note that emacs slot numbers and names are completely different from ANSI.
+  (defun my-setup-wt-tty-colors ()
+    (tty-color-clear)
+    (tty-color-define "black"       0   (my-hex-to-tty-rgb "#0c0c0c"))
+    (tty-color-define "blue"        1   (my-hex-to-tty-rgb "#0037da"))
+    (tty-color-define "green"       2   (my-hex-to-tty-rgb "#13a10e"))
+    (tty-color-define "cyan"        3   (my-hex-to-tty-rgb "#3a96dd"))
+    (tty-color-define "red"         4   (my-hex-to-tty-rgb "#c50f1f"))
+    (tty-color-define "purple"      5   (my-hex-to-tty-rgb "#881798"))
+    (tty-color-define "yellow"      6   (my-hex-to-tty-rgb "#c19c00"))
+    (tty-color-define "white"       7   (my-hex-to-tty-rgb "#cccccc"))
+    (tty-color-define "brightblack" 8   (my-hex-to-tty-rgb "#767676"))
+    (tty-color-define "brightblue"  9   (my-hex-to-tty-rgb "#3b78ff"))
+    (tty-color-define "brightgreen" 10  (my-hex-to-tty-rgb "#16c60c"))
+    (tty-color-define "brightcyan"  11  (my-hex-to-tty-rgb "#61d6d6"))
+    (tty-color-define "brightred"   12  (my-hex-to-tty-rgb "#e74856"))
+    (tty-color-define "brightpurple" 13 (my-hex-to-tty-rgb "#b4009e"))
+    (tty-color-define "brightyellow" 14 (my-hex-to-tty-rgb "#f9f1a5"))
+    (tty-color-define "brightwhite" 15  (my-hex-to-tty-rgb "#f2f2f2"))
+    )
+  (add-hook 'tty-setup-hook #'my-setup-wt-tty-colors)
   )
 
 ;; If you use `org' and don't want your org files in the default location below,
