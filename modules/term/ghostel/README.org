@@ -1,0 +1,5 @@
+#+title:    :term ghostel
+#+created:  June 18, 2026
+
+* Description :unfold:
+Modified from vterm module

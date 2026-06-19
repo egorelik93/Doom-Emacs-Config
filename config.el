@@ -2015,13 +2015,68 @@ mapping will always be the ESC prefix map."
         )
   )
 
+(map! :leader :prefix "o"
+      (:when (modulep! :term ghostel)
+        :desc "Toggle ghostel popup" "t" #'+ghostel/toggle
+        :desc "Open ghostel here"    "T" #'+ghostel/here)
+      )
+
+(after! ghostel
+  (defvar ghostel-boon-insert-map (make-boon-map 'ghostel-mode 'insert))
+  (map! :map ghostel-boon-insert-map
+        "<escape>" nil
+        "C-z" nil)
+
+  (map! :map ghostel-mode-map
+        "<prior>" (lambda () (interactive) (ghostel-send-key "p" "ctrl"))
+        "<next>" (lambda () (interactive) (ghostel-send-key "n" "ctrl"))
+        ctl-tap-wsl #'ghostel-emacs-mode
+        ctl-tap #'ghostel-emacs-mode
+        ctl-dbl-tap-wsl #'ghostel-copy-mode
+        ctl-dbl-tap #'ghostel-copy-mode)
+  (map! :map ghostel-readonly-mode-map
+        ctl-tap-wsl #'ghostel-semi-char-mode
+        ctl-tap #'ghostel-semi-char-mode
+        ctl-dbl-tap-wsl #'boon-set-command-state
+        ctl-dbl-tap #'boon-set-command-state
+        "<escape>" #'ghostel-semi-char-mode
+        "C-z" #'boon-set-command-state
+        )
+
+  ; <next> and <prev> are normally set by pixel-scroll-precision-mode and the associated map,
+  ; which as a a minor mode has higher priority.
+  ; We use this map instead, piggy-backing on a mechanism ghostel uses for mouse scrolling.
+  (map! :map ghostel--scroll-intercept-map
+        ; Goes up and down in history
+        "<prior>" (lambda () (interactive)  (if (eq ghostel--input-mode 'semi-char)
+                                           (ghostel-send-key "p" "ctrl")
+                                         (ghostel--redispatch-scroll-event 'prior)))
+        "<next>" (lambda () (interactive) (if (eq ghostel--input-mode 'semi-char)
+                                         (ghostel-send-key "n" "ctrl")
+                                       (ghostel--redispatch-scroll-event 'next)))
+        )
+  )
+
 (after! vterm
   (setq vterm-min-window-width 40)
 
-
   (defvar vterm-boon-insert-map (make-boon-map 'vterm-mode 'insert))
   (map! :map vterm-boon-insert-map
-        "<escape>" #'vterm-send-escape)
+        "<escape>" nil
+        "C-z" nil)
+
+  (map! :map vterm-mode-map
+        ctl-tap-wsl #'vterm-copy-mode
+        ctl-tap #'vterm-copy-mode
+        ctl-dbl-tap-wsl (lambda () (interactive) (vterm-copy-mode) (boon-set-command-state))
+        ctl-dbl-tap (lambda () (interactive) (vterm-copy-mode) (boon-set-command-state))
+        )
+  (map! :map vterm-copy-mode-map
+        ctl-tap-wsl #'vterm-copy-mode
+        ctl-tap #'vterm-copy-mode
+        ctl-dbl-tap-wsl #'boon-set-command-state
+        ctl-dbl-tap #'boon-set-command-state
+        )
   )
 
 (use-package! claude-code-ide
@@ -2030,6 +2085,8 @@ mapping will always be the ESC prefix map."
   (map! :leader "M-'" #'claude-code-ide-menu
                 "C-'" #'claude-code-ide-menu)
   (claude-code-ide-emacs-tools-setup) ; Optionally enable Emacs MCP tools
+
+  (setq claude-code-ide-terminal-backend 'ghostel)
 
   (setq claude-code-ide-window-width 40)
 
