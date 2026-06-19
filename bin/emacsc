@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Open an emacsclient frame from the shell. This opens a temporary emacs
+# daemon if emacs isn't already running.
+#
+# Port of emacsc.ps1, itself based on doom's org-capture.
+
+cleanup() {
+    emacsclient --eval '(let (kill-emacs-hook) (kill-emacs))' 2>/dev/null || true
+}
+
+is_server_running() {
+    emacsclient --suppress-output --eval nil &>/dev/null
+}
+
+# Parse -a and -r flags; pass everything else through unchanged
+has_a=false
+a_is_empty=true  # true when -a is absent OR passed with an empty/null value
+has_r=false
+new_args=()
+
+i=1
+while [[ $i -le $# ]]; do
+    arg="${!i}"
+    case "$arg" in
+        -a)
+            has_a=true
+            new_args+=("-a")
+            ((i++))
+            if [[ $i -le $# ]]; then
+                val="${!i}"
+                if [[ -z "$val" ]]; then
+                    a_is_empty=true
+                    new_args+=("")
+                else
+                    a_is_empty=false
+                    new_args+=("$val")
+                fi
+            else
+                a_is_empty=true
+                new_args+=("")
+            fi
+            ;;
+        -r)
+            has_r=true
+            new_args+=("$arg")
+            ;;
+        *)
+            new_args+=("$arg")
+            ;;
+    esac
+    ((i++))
+done
+
+do_cleanup=false
+
+# If emacs isn't running, start a temporary daemon solely for this window
+if $a_is_empty && ! is_server_running; then
+    echo "No Emacs daemon/server is available! Starting one..."
+    emacs --daemon
+    if ! $has_a; then
+        do_cleanup=true
+        trap cleanup EXIT INT TERM
+    fi
+fi
+
+# Fix incompatible terminals
+[[ "$TERM" == "alacritty" ]] && export TERM=xterm-256color
+
+# Add -c (new frame) unless -r (reuse frame) was passed
+emacs_args=()
+$has_r || emacs_args+=("-c")
+emacs_args+=("${new_args[@]}")
+
+# When cleanup is needed, wait for emacsclient so the trap fires after the
+# frame closes. Otherwise detach — the persistent daemon owns the frame.
+if $do_cleanup; then
+    emacsclient "${emacs_args[@]}"
+else
+    emacsclient "${emacs_args[@]}" &
+    disown
+fi
