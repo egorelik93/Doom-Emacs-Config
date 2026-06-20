@@ -2203,6 +2203,11 @@ a plain integer (from C-u 3 etc.)."
         :desc "Preview all latex" "L" #'my/org-latex-preview-all
         )
 
+  ; Not sure if this is true for all machines,
+  ; but in the environments I have tried this on, the scale is too big.
+  (setq org-format-latex-options
+        (plist-put org-format-latex-options :scale 0.5))
+
   (when (modulep! :lang org +roam)
 
     (add-to-list 'org-capture-templates
