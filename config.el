@@ -2316,6 +2316,9 @@ tasks."
                      (vertico-count . 4)))))
   )
 
+(use-package! org-fragtog
+  :hook (org-mode-hook . org-fragtog-mode))
+
 
 
 
