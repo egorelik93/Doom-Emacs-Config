@@ -137,7 +137,7 @@
                 )
              `(when-let* ((boon-maps (my/get-boon-mode-map ',(eval keymaps) ',state)))
                 (,(or doom--map-fn 'general-define-key)
-                 ,@(plist-put attrs :keymaps `boon-maps)
+                 ,@(plist-put attrs :keymaps `(backquote ,(list 'boon-maps)))
                  ,@(mapcan ,(static-if my-enable-evil `#'copy-sequence `#'identity) (nreverse defs))))
              )
            ))
