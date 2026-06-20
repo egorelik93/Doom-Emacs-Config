@@ -2166,6 +2166,43 @@ in-place, the old list reference does not remain valid."
 (after! org
   (setq org-hide-emphasis-markers t)
 
+  (setq org-preview-latex-default-process 'dvisvgm)
+  (setq org-latex-create-formula-image-program 'dvisvgm)
+
+  ; Taken from doom org module;
+  ; since it uses evil-org-mode package,
+  ; my redirect-evil-to-boon doesn't automatically apply.
+  (map! :mode org-mode
+        ;; more intuitive RET keybinds
+        :m "RET"      #'+org/dwim-at-point
+        :m "<return>" #'+org/dwim-at-point
+        :i "RET"      #'+org/return
+        :i "<return>" #'+org/return
+        :i [S-return] #'+org/shift-return
+        :i "S-RET"    #'+org/shift-return)
+
+  (defun my/org-latex-preview-all (&optional arg)
+    (interactive "P")
+    (org-latex-preview (my/shift-prefix arg 2)))
+
+  ; Created by Claude
+  (defun my/shift-prefix (arg n)
+    "Shift raw prefix ARG up by N levels of C-u (each level = x4).
+Handles the common raw-prefix forms: nil, a cons like (4), or
+a plain integer (from C-u 3 etc.)."
+    (let ((base (cond
+                 ((null arg) 1)                 ; no prefix => treat as C-u^0
+                 ((consp arg) (car arg))         ; (4), (16), ...
+                 ((integerp arg) arg)            ; numeric arg, e.g. C-u 3
+                 (t 1))))
+      (list (* base (expt 4 n)))))
+
+  (map! :localleader :mode org-mode
+        :prefix ("z" . "previews/misc")
+        :desc "Preview latex" "l" #'org-latex-preview
+        :desc "Preview all latex" "L" #'my/org-latex-preview-all
+        )
+
   (when (modulep! :lang org +roam)
 
     (add-to-list 'org-capture-templates
