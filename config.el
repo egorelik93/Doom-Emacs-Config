@@ -850,9 +850,11 @@ mapping will always be the ESC prefix map."
       (special . ,boon-special-map)))
 
   (defun make-boon-map (mode state &optional merge-with)
-    (let ((map (if (listp merge-with) (make-composed-keymap merge-with) (make-sparse-keymap)))
+    (let* ((map (if (listp merge-with) (make-composed-keymap merge-with) (make-sparse-keymap)))
           (boon-map-property (cdr (assq state boon-map-property-alist)))
-          (boon-map (cdr (assq state boon-map-alist))))
+          (boon-map (if-let ((existing (get mode boon-map-property)))
+                        existing
+                     (cdr (assq state boon-map-alist)))))
       (set-keymap-parent map boon-map)
       (put mode boon-map-property map)
     ))
@@ -900,11 +902,6 @@ mapping will always be the ESC prefix map."
   (map! :map (+dashboard-mode-boon-map +dashboard-mode-boon-special-map)
         "i" #'+dashboard/backward-button
         "k" #'+dashboard/forward-button)
-
-  (defvar org-boon-map (make-boon-map 'org-mode 'command))
-  (map! :map org-boon-map
-        "<RET>" #'org-return
-        "<return>" #'org-return)
 
   (map! :leader :desc "boon" alt-tap boon-command-map)
   (unless (modulep! :editor evil)

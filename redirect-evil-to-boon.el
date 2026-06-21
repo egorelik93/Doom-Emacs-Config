@@ -38,7 +38,7 @@
                (boon-map-sym (intern (format "my/boon-%s-command-map" mode)))
                (keymap (get mode boon-map-property)))
           (when (null keymap)
-            (setq keymap (make-sparse-keymap (format "Boon %s keymap for %s" state mode)))
+            (setq keymap (make-sparse-keymap (format "Boon command keymap for %s" mode)))
             (put mode boon-map-property keymap)
             (after! boon (set-keymap-parent keymap (eval boon-map))))
           (unless (and (boundp boon-map-sym) (eq (symbol-value boon-map-sym) keymap))
@@ -123,12 +123,12 @@
                           ; Must run after boon-qwerty is loaded, which happens in config.el
                           `(my-after-boon-keymap
                             (,(or doom--map-fn 'general-define-key)
-                             ,@(plist-put attrs :keymaps ''boon-command-map)
+                             ,@(plist-put (copy-sequence attrs) :keymaps ''boon-command-map)
                              ,@(mapcan #'identity (nreverse with-modifiers))
                             ))))
                      (static-when my-enable-evil-like-keymap
                        ``(,(or doom--map-fn 'general-define-key)
-                          ,@(plist-put attrs :keymaps ''my-evil-like-keymap)
+                          ,@(plist-put (copy-sequence attrs) :keymaps ''my-evil-like-keymap)
                           ,@(mapcan #'identity (nreverse all-defs))))
                      ))))))
            `((and keymaps (or (eq state 'normal) (eq state 'motion)))
@@ -137,7 +137,7 @@
                 )
              `(when-let* ((boon-maps (my/get-boon-mode-map ',(eval keymaps) ',state)))
                 (,(or doom--map-fn 'general-define-key)
-                 ,@(plist-put attrs :keymaps `(backquote ,(list 'boon-maps)))
+                 ,@(plist-put (copy-sequence attrs) :keymaps `boon-maps)
                  ,@(mapcan ,(static-if my-enable-evil `#'copy-sequence `#'identity) (nreverse defs))))
              )
            ))
