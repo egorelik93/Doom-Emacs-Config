@@ -2083,7 +2083,7 @@ mapping will always be the ESC prefix map."
                 "C-'" #'claude-code-ide-menu)
   (claude-code-ide-emacs-tools-setup) ; Optionally enable Emacs MCP tools
 
-  (setq claude-code-ide-terminal-backend 'ghostel)
+  (setq claude-code-ide-terminal-backend 'vterm)
 
   (setq claude-code-ide-window-width 40)
 
@@ -2315,6 +2315,8 @@ tasks."
 
 (use-package! org-fragtog
   :hook (org-mode-hook . org-fragtog-mode))
+
+(setq dtrt-indent-min-relevant-lines 1)
 
 
 
