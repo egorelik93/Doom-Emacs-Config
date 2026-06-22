@@ -602,6 +602,7 @@ mapping will always be the ESC prefix map."
   )
 (unless (daemonp) (my-init-key-translation-maps))
 (add-hook 'server-after-make-frame-hook #'my-init-key-translation-maps)
+(add-hook 'kkp-terminal-setup-complete-hook #'my-init-key-translation-maps)
 
 ; Suppress evil's ESC handling in favor of our version.
 (setq evil-intercept-esc nil)
@@ -883,13 +884,11 @@ mapping will always be the ESC prefix map."
   (map! :map 'boon-command-map
         "C-j" #'scroll-down-line
         "C-l" #'scroll-up-line
-        (:when (display-graphic-p)
-          "C-i" #'pixel-scroll-interpolate-up ; C-i is always equivalent to terminal TAB.
+        "<C-i>" #'pixel-scroll-interpolate-up ; C-i is always equivalent to terminal TAB.
                                               ; Thus, picking a frequent command that already has
-                                               ; a less reachable key, namely Page Up.
-          "C-k" #'pixel-scroll-interpolate-down)
-        (:unless (display-graphic-p)
-          "C-k" nil) ; discourage use while in termimal)
+                                              ; a less reachable key, namely Page Up.
+        "C-k" #'pixel-scroll-interpolate-down
+        ; discourage use while in termimal
         )
 
   (map! :e ctl-tap #'boon-set-command-state)
