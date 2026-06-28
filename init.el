@@ -20,20 +20,11 @@
 (defconst my-redirect-evil-maps t)
 (defconst my-log-evil-keybinds nil)
 (defconst my-enable-evil-like-keymap nil)
-(defconst my-use-default-bindings nil)
+(defconst my-use-doom-default-bindings nil)
 ; Needed for bindings to behave as expected;
 ; I imagine that my setting in config.el is probably too late for insert.
 ; I have configured it so that if this is nil, we will ignore insert bindings.
 (setq evil-disable-insert-state-bindings t)
-
-(defun my-keybindings-files ()
-      (list
-       ;(expand-file-name "+emacs-bindings.el" (doom-module-locate-path '(:config . default)))
-       (expand-file-name "+evil-bindings.el" (doom-module-locate-path '(:config . default)))
-       (expand-file-name "emacs-bindings.el" doom-user-dir)
-       ;(expand-file-name "no-evil-bindings.el" doom-user-dir)
-       (expand-file-name "evil-bindings-overrides.el" doom-user-dir)
-       ))
 
 (doom! :input
        ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
@@ -223,19 +214,22 @@
        :config
        ;;literate
        ;(default +bindings +smartparens))
-       (:if (or my-enable-evil my-use-default-bindings) (default +bindings +smartparens))
-       (:if (not (or my-enable-evil my-use-default-bindings)) (default +smartparens)))
+       (:if (or my-enable-evil my-use-doom-default-bindings) (default +bindings +smartparens))
+       (:if (not (or my-enable-evil my-use-doom-default-bindings)) (default +smartparens))
+
+       (:if (not (or my-enable-evil my-use-doom-default-bindings)) default-bindings)
+       )
 
 
 (when my-log-evil-keybinds
   (setq message-log-max (* message-log-max 10))
   )
 
-(defun my-compile-doomdir-elisp (file)
+(defun my-compile-doomdir-elisp (file &optional dir)
   (interactive "f")
   (print! "> Compiling %s ..." file)
   (let ((byte-compile-warnings nil)
-        (result (byte-compile-file (expand-file-name file doom-user-dir))))
+        (result (byte-compile-file (expand-file-name file (or dir doom-user-dir)))))
     (unless (or (eq 'no-byte-compile result) (eq t result))
       (with-current-buffer "*Compile-Log*"
         (print! "  - Compilation failed: %s" (buffer-string))))
@@ -244,47 +238,11 @@
     ))
 
 (when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
-  (add-hook! 'doom-before-sync-hook
-    (my-compile-doomdir-elisp "redirect-evil-to-boon.el"))
-
+  (if noninteractive
+      (add-hook! 'doom-before-sync-hook
+        (my-compile-doomdir-elisp "redirect-evil-to-boon.el"))
   (add-hook
    'doom-before-modules-init-hook
    (defun my-redirect-evil-maps ()
      (load! "redirect-evil-to-boon.elc" doom-user-dir)
-     )))
-
-(defun my/combine-and-expand (output run-fn &rest files)
-  "Read forms from FILE1 and FILE2, macroexpand each, write to OUTPUT."
-  (let ((indent-tabs-mode nil)
-        (forms '()))
-    (dolist (file files)
-      (with-temp-buffer
-        (insert-file-contents file)
-        (condition-case err
-            (progn (check-parens) nil)
-          (error (error "Paren mismatch in %s: %s" file err)
-             err))
-        (goto-char (point-min))
-        (condition-case nil
-            (while t
-              (push (read (current-buffer)) forms))
-          (end-of-file nil)
-          (error (error "Read error in %s at position %s: %s"
-                file (point) err)))  ; re-signal as a real error, aborting combine
-          ))
-    (setq forms (nreverse forms))
-    (with-temp-file output
-      ;;; no-evil-bindings.el -*- lexical-binding: t; -*-
-      (insert (format! ";;; %s -*- lexical-binding: t; -*-\n" output))
-      (dolist (form forms)
-        (let ();((expanded (macroexpand-all form)))
-          (prin1 form (current-buffer))
-          (insert "\n")))
-      (pp-buffer))))
-
-(unless my-enable-evil
-  (add-hook! 'doom-after-sync-hook
-    (my-compile-doomdir-elisp "no-evil-windows.el")
-    (print! "> Combining keybindings ...")
-    (apply #'my/combine-and-expand (expand-file-name "all-bindings.el" doom-user-dir) "my-run-all-bindings" (my-keybindings-files)))
-  )
+     ))))
