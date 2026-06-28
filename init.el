@@ -238,11 +238,11 @@
     ))
 
 (when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
-  (if noninteractive
-      (add-hook! 'doom-before-sync-hook
-        (my-compile-doomdir-elisp "redirect-evil-to-boon.el"))
+  (add-hook! 'doom-before-sync-hook
+    (my-compile-doomdir-elisp "redirect-evil-to-boon.el"))
+
   (add-hook
    'doom-before-modules-init-hook
    (defun my-redirect-evil-maps ()
      (load! "redirect-evil-to-boon.elc" doom-user-dir)
-     ))))
+     )))
