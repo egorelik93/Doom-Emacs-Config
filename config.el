@@ -2138,9 +2138,9 @@ in-place, the old list reference does not remain valid."
 
 (insert-into-list +dashboard-menu-sections 3
   '("Find org-roam node"
-    :icon (nerd-icons-icon-for-mode 'org-mode :face 'dashboard-menu-title)
+    :icon (nerd-icons-icon-for-mode 'org-mode :face '+dashboard-menu-title)
     :when (modulep! :lang org +roam)
-    :face (:inherit (dashboard-menu-title bold))
+    :face (:inherit (+dashboard-menu-title bold))
     :action org-roam-node-find))
 
 (after! org-protocol
