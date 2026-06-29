@@ -159,6 +159,8 @@ tasks."
         )
       )
 
+    (defvar my/vulpea-todo-update-hook)
+
     (defun vulpea-todo-update-tag ()
       "Update todo tag in the current buffer."
       (when (and (not (active-minibuffer-window))
@@ -177,9 +179,12 @@ tasks."
               ;(when (seq-contains-p tags "todo")
               ;  (org-roam-tag-remove '("todo")))
                 (when (not tagged)
-                  (vulpea-buffer-tags-add "todo"))
+                  (vulpea-buffer-tags-add "todo")
+                  (run-hooks 'my/vulpea-todo-update-hook)
+                  )
               (when tagged
                 (vulpea-buffer-tags-remove "todo")
+                (run-hooks 'my/vulpea-todo-update-hook)
                 )
               )
             ))))
@@ -234,3 +239,140 @@ tasks."
 
 ; Move this to V, to make room for vulpea
 (map! :leader :prefix "n" :desc "View search" "V" #'org-search-view)
+
+
+;;; Vulpea TODO aggregation
+;; Created by Claude Code
+
+(defvar my/vulpea-aggregate-todo-file nil
+  "Path where aggregated vulpea TODOs are written. Set in config.local.el.")
+
+(defvar my/vulpea-aggregate-timer nil)
+
+(defvar my/vulpea-aggregate-dirty nil
+  "Non-nil when the aggregated TODO file may be out of date.")
+
+(defvar my/vulpea-aggregate-exclude-tag "todos-aggregate-exclude"
+  "Vulpea tag that opts a note out of TODO aggregation.")
+
+(defun my/vulpea--entry-planning-line ()
+  "Return the raw planning line for the heading at point, or nil."
+  (save-excursion
+    (forward-line 1)
+    (when (looking-at-p org-planning-line-re)
+      (string-trim
+       (buffer-substring-no-properties (line-beginning-position)
+                                       (line-end-position))))))
+
+(defun my/vulpea--entry-properties-drawer ()
+  "Return a formatted PROPERTIES drawer string for the heading at point, or nil."
+  (let ((props (org-entry-properties nil 'standard)))
+    (when props
+      (concat "  :PROPERTIES:\n"
+              (mapconcat (lambda (p) (format "  :%s: %s" (car p) (cdr p)))
+                         props "\n")
+              "\n  :END:"))))
+
+(defun my/vulpea--extract-todos (file)
+  "Return a list of todo plists for all active TODOs in FILE."
+  (with-current-buffer (find-file-noselect file)
+    (org-with-wide-buffer
+     (let (results)
+       (org-map-entries
+        (lambda ()
+          (let ((kw (org-get-todo-state)))
+            (when (and kw (not (member kw org-done-keywords)))
+              (push (list :keyword kw
+                          :title   (org-get-heading t t t t)
+                          :tags    (org-get-tags nil t)
+                          :plan    (my/vulpea--entry-planning-line)
+                          :props   (my/vulpea--entry-properties-drawer))
+                    results))))
+        t nil)
+       (nreverse results)))))
+
+(defun my/vulpea-aggregate-stale-p ()
+  "Return non-nil if the aggregate file is missing or older than any todo source file."
+  (or (not (file-exists-p my/vulpea-aggregate-todo-file))
+      (let ((agg-mtime (file-attribute-modification-time
+                        (file-attributes my/vulpea-aggregate-todo-file))))
+        (seq-some (lambda (f)
+                    (time-less-p agg-mtime
+                                 (file-attribute-modification-time
+                                  (file-attributes f))))
+                  (vulpea-todo-files)))))
+
+(defun my/vulpea-aggregate-todos ()
+  "Collect active TODOs from vulpea todo files and write to `my/vulpea-aggregate-todo-file'.
+Skips the write when called non-interactively and nothing has changed."
+  (interactive)
+  (cond
+   ((not my/vulpea-aggregate-todo-file)
+    (when (called-interactively-p 'any)
+      (user-error "Set my/vulpea-aggregate-todo-file in config.local.el")))
+   ((and (not my/vulpea-aggregate-dirty)
+         (not (called-interactively-p 'any))
+         (not (my/vulpea-aggregate-stale-p)))
+    nil)
+   (t
+    (condition-case err
+        (let ((notes (seq-remove
+                      (lambda (n)
+                        (member my/vulpea-aggregate-exclude-tag (vulpea-note-tags n)))
+                      (vulpea-db-query-by-tags-some '("todo"))))
+              (seen  (make-hash-table :test 'equal)))
+          (with-temp-file my/vulpea-aggregate-todo-file
+            (insert "#+TITLE: Aggregated Desktop TODOs\n"
+                    "# Auto-generated. Do not edit manually.\n"
+                    (format "# Last updated: %s\n\n"
+                            (format-time-string "%Y-%m-%d %a %H:%M")))
+            (dolist (note notes)
+              (let ((file (vulpea-note-path note)))
+                (unless (gethash file seen)
+                  (puthash file t seen)
+                  (let ((title (vulpea-note-title note))
+                        (todos (my/vulpea--extract-todos file)))
+                    (when todos
+                      (insert (format "* [[file:%s][%s]]\n" file title))
+                      (dolist (todo todos)
+                        (let* ((kw      (plist-get todo :keyword))
+                               (heading (plist-get todo :title))
+                               (tags    (plist-get todo :tags))
+                               (plan    (plist-get todo :plan))
+                               (props   (plist-get todo :props))
+                               (tag-str (if tags
+                                            (format " :%s:" (string-join tags ":"))
+                                          "")))
+                          (insert (format "** %s %s%s\n" kw heading tag-str))
+                          (when plan  (insert "   " plan  "\n"))
+                          (when props (insert props "\n"))))))))))
+          (setq my/vulpea-aggregate-dirty nil)
+          (message "vulpea-aggregate: wrote %s" my/vulpea-aggregate-todo-file))
+      (error (message "vulpea-aggregate: %s" (error-message-string err)))))))
+
+(defun my/vulpea-aggregate-setup (&rest _)
+  "Start the aggregation timer and register hooks, if the output file is configured."
+  (when my/vulpea-aggregate-todo-file
+    (add-hook 'my/vulpea-todo-update-hook
+              (lambda () (setq my/vulpea-aggregate-dirty t)))
+    (add-hook 'after-save-hook
+              (lambda ()
+                (when (and (vulpea-buffer-p)
+                           (let ((tags (vulpea-buffer-tags-get t)))
+                             (and (member "todo" tags)
+                                  (not (member my/vulpea-aggregate-exclude-tag tags)))))
+                  (setq my/vulpea-aggregate-dirty t))))
+    (run-with-idle-timer 10 nil #'my/vulpea-aggregate-todos)
+    (when my/vulpea-aggregate-timer (cancel-timer my/vulpea-aggregate-timer))
+    (setq my/vulpea-aggregate-timer
+          (run-with-timer 3600 3600 #'my/vulpea-aggregate-todos))
+    (add-hook 'kill-emacs-hook #'my/vulpea-aggregate-todos)))
+
+; Opt in from config.local.el:
+;   (setq my/vulpea-aggregate-todo-file "/path/to/todos.org")
+;   (add-hook 'emacs-startup-hook #'my/vulpea-aggregate-setup)
+;
+; Alternate initialization using my vulpea module modifications:
+;   (setq my/vulpea-aggregate-todo-file "/path/to/todos.org")
+;   (after! vulpea
+;     (advice-add #'+vulpea-try-init-db-a :after #'my/vulpea-aggregate-setup))
