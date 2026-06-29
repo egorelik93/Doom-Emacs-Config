@@ -132,7 +132,7 @@ a plain integer (from C-u 3 etc.)."
                    ""
                    :immediate-finish t)))
 
-  (when (and (modulep! :lang org +roam) (modulep! vulpea))
+  (when (and (modulep! :lang org +roam) (modulep! :tools vulpea))
     ; Modified from https://www.d12frosted.io/posts/2021-01-16-task-management-with-roam-vol5
 
     (defun vulpea-todo-p ()
