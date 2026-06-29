@@ -126,14 +126,14 @@ a plain integer (from C-u 3 etc.)."
         (plist-put org-format-latex-options :scale 0.5))
 
   (when (modulep! :lang org +roam)
-
     (add-to-list 'org-capture-templates
                  '("r" "Org-Roam Node" entry
                    (function org-roam-capture)
                    ""
-                   :immediate-finish t))
+                   :immediate-finish t)))
 
-                                        ; Modified from https://www.d12frosted.io/posts/2021-01-16-task-management-with-roam-vol5
+  (when (and (modulep! :lang org +roam) (modulep! vulpea))
+    ; Modified from https://www.d12frosted.io/posts/2021-01-16-task-management-with-roam-vol5
 
     (defun vulpea-todo-p ()
       "Return non-nil if current buffer has any todo entry.
@@ -150,6 +150,7 @@ tasks."
          (lambda (h)
            (org-element-property :todo-type h)))))
 
+    ; May not need this anymore if using vulpea v2
     (defun my/org-roam-buffer-tags-get ()
       (let ((node (org-roam-node-at-point)))
         (if (org-roam-node-p node)
@@ -164,34 +165,57 @@ tasks."
                  (vulpea-buffer-p))
         (save-excursion
           (goto-char (point-min))
-          (let* ((tags (my/org-roam-buffer-tags-get))
-                 (original-tags tags))
+          (let* ((tags (vulpea-buffer-tags-get t))
+                 ;(tags (my/org-roam-buffer-tags-get))
+                 ;(original-tags tags)
+                 (tagged (and (member "todo" tags)))
+                 )
 
             (if (vulpea-todo-p)
-                (when (not (seq-contains-p tags "todo"))
-                  (org-roam-tag-add '("todo")))
-              (when (seq-contains-p tags "todo")
-                (org-roam-tag-remove '("todo"))))
+              ;  (when (not (seq-contains-p tags "todo"))
+              ;    (org-roam-tag-add '("todo")))
+              ;(when (seq-contains-p tags "todo")
+              ;  (org-roam-tag-remove '("todo")))
+                (when (not tagged)
+                  (vulpea-buffer-tags-add "todo"))
+              (when tagged
+                (vulpea-buffer-tags-remove "todo")
+                )
+              )
             ))))
 
     (defun vulpea-buffer-p ()
       "Return non-nil if the currently visited buffer is a note."
-      (and buffer-file-name
-           (string-prefix-p
-            (expand-file-name (file-name-as-directory org-roam-directory))
-            (file-name-directory buffer-file-name))))
+      (when-let* ((file (buffer-file-name))
+                  (dirs (bound-and-true-p vulpea-db-sync-directories)))
+        (let ((file (expand-file-name file)))
+          (seq-some
+           (lambda (dir)
+             (string-prefix-p
+              (file-name-as-directory (expand-file-name dir))
+              file))
+           dirs
+           )))
+      ;(and buffer-file-name
+      ;     (string-prefix-p
+      ;      (expand-file-name (file-name-as-directory org-roam-directory))
+      ;      (file-name-directory buffer-file-name)))
+      )
 
     (defun vulpea-todo-files ()
       "Return a list of note files containing 'todo' tag." ;
       (seq-uniq
        (seq-map
-        #'car
-        (org-roam-db-query
-         [:select [nodes:file]
-          :from tags
-          :left-join nodes
-          :on (= tags:node-id nodes:id)
-          :where (like tag (quote "%\"todo\"%"))]))))
+        #'vulpea-note-path
+        (vulpea-db-query-by-tags-some '("todo"))
+      ;  #'car
+      ;  (org-roam-db-query
+      ;   [:select [nodes:file]
+      ;    :from tags
+      ;    :left-join nodes
+      ;    :on (= tags:node-id nodes:id)
+      ;    :where (like tag (quote "%\"todo\"%"))])
+      )))
 
     (defun vulpea-agenda-files-update (&rest _)
       "Update the value of `org-agenda-files'."
@@ -207,3 +231,6 @@ tasks."
 
 (use-package! org-fragtog
   :hook (org-mode-hook . org-fragtog-mode))
+
+; Move this to V, to make room for vulpea
+(map! :leader :prefix "n" :desc "View search" "V" #'org-search-view)
