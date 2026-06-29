@@ -1112,6 +1112,26 @@ mapping will always be the ESC prefix map."
 
 (setq dtrt-indent-min-relevant-lines 1)
 
+(defcustom my/wsl-distro-name "archlinux"
+  "WSL distribution name for constructing wsl.localhost file URLs."
+  :type 'string)
+
+(defun my/browse-url-wsl (url &optional new-window)
+  "Like `browse-url-generic', but converts file: URLs for Windows access.
+Paths under /mnt/<drive>/ are treated as Windows drive paths; all others
+are served via wsl.localhost using `my/wsl-distro-name'."
+  (browse-url-generic
+   (if (string-prefix-p "file:" url)
+       (let ((path (url-filename (url-generic-parse-url url))))
+         (if (string-match "^/mnt/\\([a-zA-Z]\\)\\(/.*\\)?$" path)
+             (format "file:///%s:%s"
+                     (upcase (match-string 1 path))
+                     (or (match-string 2 path) "/"))
+           (format "file://///wsl.localhost/%s%s"
+                   my/wsl-distro-name path)))
+     url)
+   new-window))
+
 
 
 
