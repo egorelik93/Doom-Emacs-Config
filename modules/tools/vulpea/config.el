@@ -17,21 +17,35 @@
   :config
   ;; "Setup `vulpea' but don't immediately initialize its database.
   ;; Instead, initialize it when it will be actually needed."
-    (letf! ((#'vulpea-db-sync--start #'ignore))
-      (vulpea-db-autosync-mode +1));)
+  (require 'vulpea-db-sync)
+  ;; (letf! ((#'vulpea-db-sync--start #'ignore))
+  ;;   (vulpea-db-autosync-mode +1))
 
-    (defun +vulpea-try-init-db-a (&rest _)
-      "Try to initialize vulpea database at the last possible safe moment.
+  (defun +vulpea-try-init-db-a (&rest _)
+    "Try to initialize vulpea database at the last possible safe moment.
 In case of failure, fail gracefully."
-      :before #'vulpea-db
-      (message "Initializing vulpea database...")
-      (advice-remove 'vulpea-db #'+vulpea-try-init-db-a)
-      (remove-hook 'org-mode-hook #'+vulpea-try-init-db-a)
-      (vulpea-db-sync--start))
-
-    (advice-add #'vulpea-db :before #'+vulpea-try-init-db-a)
-    (add-hook! 'org-mode-hook #'+vulpea-try-init-db-a)
+    :before #'vulpea-db
+    (message "Initializing vulpea database...")
+    (advice-remove 'vulpea-db #'+vulpea-try-init-db-a)
+    (remove-hook 'org-mode-hook #'+vulpea-try-init-db-a)
+    ;;(vulpea-db-sync--start)
+    (vulpea-db-autosync-mode +1)
     )
+
+  (advice-add #'vulpea-db :before #'+vulpea-try-init-db-a)
+  (add-hook! 'org-mode-hook #'+vulpea-try-init-db-a)
+
+  (when (featurep :system 'windows)
+    ;; The official implementation fails if forward and backslashes are mixed,
+    ;; which they are.
+    (advice-add #'vulpea-db-sync--fswatch-filter :around
+                (lambda (oldfun _proc output)
+                  (funcall
+                   oldfun
+                   _proc
+                   (replace-regexp-in-string "\\\\" "/" output))))
+    )
+  )
 
 (map! :leader :prefix "n" "v" nil)
 (map! :leader

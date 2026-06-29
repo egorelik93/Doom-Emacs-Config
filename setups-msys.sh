@@ -313,4 +313,17 @@ pacman -Sdd --needed --noconfirm --asdeps "${PKG_PREFIX}-aspell" "${PKG_PREFIX}-
 
 
 echo ""
+
+# Set up fswatch
+#
+# There is a build available through winget,
+# but as of 2026-6-29 it is based on cygwin,
+# and reports paths using a cygdrive prefix.
+# That won't work for our needs
+
+echo "Installing fswatch"
+pacman -Sdd --needed --noconfirm "${PKG_PREFIX}-fswatch"
+
+
+echo ""
 echo "==> Done."
