@@ -346,7 +346,7 @@ tasks."
                     (time-less-p agg-mtime
                                  (file-attribute-modification-time
                                   (file-attributes f))))
-                  (vulpea-todo-files)))))
+                  (my/vulpea-todo-files)))))
 
 (defun my/vulpea-aggregate-todos ()
   "Collect active TODOs from vulpea todo files and write to `my/vulpea-aggregate-todo-file'.
