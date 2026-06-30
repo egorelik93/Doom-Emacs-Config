@@ -125,12 +125,73 @@ a plain integer (from C-u 3 etc.)."
   (setq org-format-latex-options
         (plist-put org-format-latex-options :scale 0.5))
 
+  (defun my/org-set-created-property ()
+    "Set CREATED property with current timestamp if not already set."
+    (unless (org-entry-get nil "CREATED")
+      (org-set-property "CREATED"
+                        (format-time-string "[%Y-%m-%d %a %H:%M]"))))
+
+  (defun my/org-set-created-property-if-chronological ()
+    (when (member "chronological" (org-get-tags))
+      (my/org-set-created-property)
+      ))
+  (add-hook 'org-insert-heading-hook #'my/org-set-created-property-if-chronological)
+
   (when (modulep! :lang org +roam)
     (add-to-list 'org-capture-templates
                  '("r" "Org-Roam Node" entry
                    (function org-roam-capture)
                    ""
                    :immediate-finish t)))
+
+  ;; A number of vulpea-related utilities don't actually need it;
+  ;; we will use vulpea-db-sync-directories as a proxy for directories
+  ;; we want to automate, regardless of vulpea's presence.
+
+  (defun vulpea-buffer-p ()
+    "Return non-nil if the currently visited buffer is a note."
+    (when-let* ((file (buffer-file-name))
+                (dirs (bound-and-true-p vulpea-db-sync-directories)))
+      (let ((file (expand-file-name file)))
+        (seq-some
+         (lambda (dir)
+           (string-prefix-p
+            (file-name-as-directory (expand-file-name dir))
+            file))
+         dirs
+         )))
+    ;;(and buffer-file-name
+    ;;     (string-prefix-p
+    ;;      (expand-file-name (file-name-as-directory org-roam-directory))
+    ;;      (file-name-directory buffer-file-name)))
+    )
+
+  (defvar my/vulpea-file-update-hook nil)
+  (defun my/vulpea-file-update ()
+    (when (and (not (active-minibuffer-window))
+               (vulpea-buffer-p))
+      (run-hooks 'my/vulpea-file-update-hook)
+      ))
+
+  (add-hook 'find-file-hook #'my/vulpea-file-update)
+  (add-hook 'before-save-hook #'my/vulpea-file-update)
+
+  (defun my/org-chronological-add-dates ()
+      "Add dates to headers in chronological buffers."
+      (save-excursion
+        (goto-char (point-min))
+        (let* ((tags (org-get-tags))
+               (chronological (member "chronological" tags))
+               )
+          (when chronological
+            (org-map-entries
+             (lambda ()
+               (unless (org-entry-get nil "CREATED")
+                 (org-set-property "CREATED"
+                                   (format-time-string "[%Y-%m-%d %a %H:%M]"))
+                 )
+               ))))))
+  (add-hook 'my/vulpea-file-update-hook #'my/org-chronological-add-dates)
 
   (when (and (modulep! :lang org +roam) (modulep! :tools vulpea))
     ; Modified from https://www.d12frosted.io/posts/2021-01-16-task-management-with-roam-vol5
@@ -163,49 +224,29 @@ tasks."
 
     (defun vulpea-todo-update-tag ()
       "Update todo tag in the current buffer."
-      (when (and (not (active-minibuffer-window))
-                 (vulpea-buffer-p))
-        (save-excursion
-          (goto-char (point-min))
-          (let* ((tags (vulpea-buffer-tags-get t))
-                 ;(tags (my/org-roam-buffer-tags-get))
-                 ;(original-tags tags)
-                 (tagged (and (member "todo" tags)))
-                 )
+      (save-excursion
+        (goto-char (point-min))
+        (let* ((tags (vulpea-buffer-tags-get t))
+               ;;(tags (my/org-roam-buffer-tags-get))
+               ;;(original-tags tags)
+               (tagged (and (member "todo" tags)))
+               )
 
-            (if (vulpea-todo-p)
-              ;  (when (not (seq-contains-p tags "todo"))
-              ;    (org-roam-tag-add '("todo")))
-              ;(when (seq-contains-p tags "todo")
-              ;  (org-roam-tag-remove '("todo")))
-                (when (not tagged)
-                  (vulpea-buffer-tags-add "todo")
-                  (run-hooks 'my/vulpea-todo-update-hook)
-                  )
-              (when tagged
-                (vulpea-buffer-tags-remove "todo")
+          (if (vulpea-todo-p)
+              ;;  (when (not (seq-contains-p tags "todo"))
+              ;;    (org-roam-tag-add '("todo")))
+              ;;(when (seq-contains-p tags "todo")
+              ;;  (org-roam-tag-remove '("todo")))
+              (when (not tagged)
+                (vulpea-buffer-tags-add "todo")
                 (run-hooks 'my/vulpea-todo-update-hook)
                 )
+            (when tagged
+              (vulpea-buffer-tags-remove "todo")
+              (run-hooks 'my/vulpea-todo-update-hook)
               )
-            ))))
-
-    (defun vulpea-buffer-p ()
-      "Return non-nil if the currently visited buffer is a note."
-      (when-let* ((file (buffer-file-name))
-                  (dirs (bound-and-true-p vulpea-db-sync-directories)))
-        (let ((file (expand-file-name file)))
-          (seq-some
-           (lambda (dir)
-             (string-prefix-p
-              (file-name-as-directory (expand-file-name dir))
-              file))
-           dirs
-           )))
-      ;(and buffer-file-name
-      ;     (string-prefix-p
-      ;      (expand-file-name (file-name-as-directory org-roam-directory))
-      ;      (file-name-directory buffer-file-name)))
-      )
+            )
+          )))
 
     (defun vulpea-todo-files ()
       "Return a list of note files containing 'todo' tag." ;
@@ -226,8 +267,7 @@ tasks."
       "Update the value of `org-agenda-files'."
       (setq org-agenda-files (vulpea-todo-files)))
 
-    (add-hook 'find-file-hook #'vulpea-todo-update-tag)
-    (add-hook 'before-save-hook #'vulpea-todo-update-tag)
+    (add-hook 'my/vulpea-file-update-hook #'vulpea-todo-update-tag)
 
     (advice-add 'org-agenda :before #'vulpea-agenda-files-update)
     (advice-add 'org-todo-list :before #'vulpea-agenda-files-update)
