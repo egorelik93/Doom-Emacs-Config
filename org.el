@@ -401,13 +401,18 @@ Skips the write when called non-interactively and nothing has changed."
   (when my/vulpea-aggregate-todo-file
     (add-hook 'my/vulpea-todo-update-hook
               (lambda () (setq my/vulpea-aggregate-dirty t)))
-    (add-hook 'after-save-hook
+    (add-hook 'org-mode-hook
               (lambda ()
-                (when (and (my/org-automate-buffer-p)
-                           (let ((tags (vulpea-buffer-tags-get t)))
-                             (and (member "todo" tags)
-                                  (not (member my/vulpea-aggregate-exclude-tag tags)))))
-                  (setq my/vulpea-aggregate-dirty t))))
+                (add-hook 'after-save-hook
+                          (lambda ()
+                            (when (and (my/org-automate-buffer-p)
+                                       (let ((tags (vulpea-buffer-tags-get t)))
+                                         (and (member "todo" tags)
+                                              (not (member my/vulpea-aggregate-exclude-tag tags)))))
+                              (setq my/vulpea-aggregate-dirty t)))
+                          nil
+                          t
+                          )))
     (run-with-idle-timer 10 nil #'my/vulpea-aggregate-todos)
     (when my/vulpea-aggregate-timer (cancel-timer my/vulpea-aggregate-timer))
     (setq my/vulpea-aggregate-timer
