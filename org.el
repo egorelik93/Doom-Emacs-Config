@@ -86,6 +86,9 @@ in-place, the old list reference does not remain valid."
   (setq org-preview-latex-default-process 'dvisvgm)
   (setq org-latex-create-formula-image-program 'dvisvgm)
 
+  ; In case latex-mode is not already loaded
+  (add-hook 'org-mode-hook (lambda () (yas-activate-extra-mode 'latex-mode)))
+
   ; Taken from doom org module;
   ; since it uses evil-org-mode package,
   ; my redirect-evil-to-boon doesn't automatically apply.

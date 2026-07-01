@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: text
+# uuid:
+# key: \t
+# --
+\text{$1}$0

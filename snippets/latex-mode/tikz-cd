@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: tikz-cd
+# key: tcd
+# --
+\begin{tikzcd}
+`%`$0
+\end{tikzcd}
