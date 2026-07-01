@@ -34,17 +34,6 @@ In case of failure, fail gracefully."
 
   (advice-add #'vulpea-db :before #'+vulpea-try-init-db-a)
   (add-hook! 'org-mode-hook #'+vulpea-try-init-db-a)
-
-  (when (featurep :system 'windows)
-    ;; The official implementation fails if forward and backslashes are mixed,
-    ;; which they are.
-    (advice-add #'vulpea-db-sync--fswatch-filter :around
-                (lambda (oldfun _proc output)
-                  (funcall
-                   oldfun
-                   _proc
-                   (replace-regexp-in-string "\\\\" "/" output))))
-    )
   )
 
 (map! :leader :prefix "n" "v" nil)
