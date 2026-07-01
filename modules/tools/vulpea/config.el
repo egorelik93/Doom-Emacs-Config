@@ -36,6 +36,11 @@ In case of failure, fail gracefully."
   (add-hook! 'org-mode-hook #'+vulpea-try-init-db-a)
   )
 
+(use-package! consult-vulpea
+  :after vulpea
+  :config
+  (consult-vulpea-mode 1))
+
 (map! :leader :prefix "n" "v" nil)
 (map! :leader
       (:prefix ("n" . "notes")
