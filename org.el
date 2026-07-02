@@ -433,3 +433,18 @@ Skips the write when called non-interactively and nothing has changed."
 ;   (setq my/vulpea-aggregate-todo-file "/path/to/todos.org")
 ;   (after! vulpea
 ;     (advice-add #'+vulpea-try-init-db-a :after #'my/vulpea-aggregate-setup))
+
+(after! (laas org)
+  ; The standard org--mathp advice on texmathp breaks laas
+  (defun my/laaas-org--math-p (orig-texmathp &rest args)
+    (apply orig-texmathp args))
+
+  (defun my/laas-org-mathp-texmathp (org-mathp)
+    (if org-mathp
+        (letf! ((#'org--math-p #'my/laaas-org--math-p))
+          (texmathp)
+          )
+      nil))
+
+  (advice-add #'laas-org-mathp :filter-return #'my/laas-org-mathp-texmathp)
+  )

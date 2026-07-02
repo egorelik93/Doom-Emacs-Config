@@ -142,7 +142,7 @@
 
 (after! laas
   (aas-set-snippets 'laas-mode
-    :cond #'texmathp
+    :cond #'laas-mathp
     "<-" "\\leftarrow"
     )
   )
