@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# key: \begin
+# group: environments
+# name: \begin{environment} ... \end{environment}
+# condition: (fboundp 'cdlatex-environment)
+# type: command
+# uuid: \begin
+# --
+(run-at-time 0 nil #'org-cdlatex-environment-indent)

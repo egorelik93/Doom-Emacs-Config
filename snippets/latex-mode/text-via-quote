@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: text-via-quote
+# key: "
+# type: command
+# --
+(when (string-equal (char-to-string (char-after)) "\"")
+  (delete-char 1))
+(yas-expand-snippet (yas-lookup-snippet "text"))

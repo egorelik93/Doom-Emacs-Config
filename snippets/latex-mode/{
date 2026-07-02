@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# key: {
+# group: environments
+# name: {} to \begin{environment} ... \end{environment}
+# condition: (fboundp 'cdlatex-environment)
+# type: command
+# expand-env: ((yas-indent-line 'none))
+# --
+(when (string-equal (char-to-string (char-after)) "}")
+  (delete-char 1))
+(yas-expand-snippet (yas-lookup-snippet "\\begin{environment} ... \\end{environment}"))
