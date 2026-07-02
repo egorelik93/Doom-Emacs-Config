@@ -139,3 +139,10 @@
         "{" #'cdlatex-environment
         )
   )
+
+(after! laas
+  (aas-set-snippets 'laas-mode
+    :cond #'texmathp
+    "<-" "\\leftarrow"
+    )
+  )
