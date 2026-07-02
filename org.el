@@ -98,6 +98,12 @@ in-place, the old list reference does not remain valid."
         :i [S-return] #'+org/shift-return
         :i "S-RET"    #'+org/shift-return)
 
+  (map! :map org-cdlatex-mode-map
+        "C-c {" nil
+        :localleader
+        "{" #'org-cdlatex-environment-indent
+        )
+
   (defun my/org-latex-preview-all (&optional arg)
     (interactive "P")
     (org-latex-preview (my/shift-prefix arg 2)))

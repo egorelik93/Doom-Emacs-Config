@@ -1080,8 +1080,6 @@ mapping will always be the ESC prefix map."
   )
 
 
-(load! "org.el")
-
 ; If using flyspell, their bindings are overly aggressive
 (setq flyspell-mode-map (make-sparse-keymap))
 

@@ -122,3 +122,20 @@
         "C" #'haskell-cabal-visit-file
         )
   )
+
+; Org
+
+(load! "org.el")
+
+; Latex
+
+(after! cdlatex
+  (map! :map cdlatex-mode-map
+        "C-c ?" nil
+        ;; Use "{ TAB" snippet instead
+        "C-c {" nil
+        :localleader
+        "h" #'cdlatex-command-help
+        "{" #'cdlatex-environment
+        )
+  )
