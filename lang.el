@@ -123,17 +123,63 @@
         )
   )
 
-; Org
-
-(load! "org.el")
-
 ; Latex
+
+;; Created by Claude
+(defun my/cdlatex-math-modify-word-default (arg)
+  "Like `cdlatex-math-modify', but with 0- and 1-prefix scope swapped.
+No prefix arg (nil) acts on the whole word before point (cdlatex's
+`backward-word' branch, normally reached with `C-u 1'). A literal
+prefix of 1 (`C-u 1') falls back to cdlatex's normal default of
+modifying just the last character/group/macro. Any other prefix
+arg is passed through unchanged to `cdlatex-math-modify'."
+  (interactive "P")
+  (cdlatex-math-modify
+   (cond
+    ((null arg) 1)     ; 0 -> 1: no arg now means "whole word"
+    ((eql arg 1) nil)  ; 1 -> 0: C-u 1 now means "last char"
+    (t arg))))          ; anything else: untouched
+
+;; Created by Claude
+(defun my/latex-smart-text-space-common (orig-fn)
+  (if (laas-mathp)
+      (let* ((end (point))
+             (start (save-excursion (skip-chars-backward "a-zA-Z") (point)))
+             (word-length (- end start))
+             (preceded-by-backslash
+              (eq (char-before start) ?\\)))
+        (if (and (> word-length 1) (not preceded-by-backslash))
+            (let* ((word (buffer-substring-no-properties start end))
+                   (gap-start (save-excursion (goto-char start)
+                                              (skip-chars-backward " ")
+                                              (point)))
+                   (prev-is-mathrm
+                    (save-excursion
+                      (goto-char gap-start)
+                      (looking-back "\\\\math[a-zA-Z][a-zA-Z]{[^{}]*}"
+                                    (max (point-min) (- (point) 100))))))
+              (delete-region start end)          ; only delete the word itself
+              (when prev-is-mathrm
+                (delete-region gap-start start)  ; only touch the gap if changing it
+                (insert "\\ "))
+              (progn
+                (insert "\\mathrm{" word "}")
+                (call-interactively orig-fn)))
+          (call-interactively orig-fn)))
+        (call-interactively orig-fn)))
+
+(defun my/latex-smart-text-space ()
+    "In math mode, wrap the preceding word in \\mathrm{}; otherwise insert a space.
+Does not fire on single-letter words or on the argument of a \\command."
+    (interactive)
+    (my/latex-smart-text-space-common #'self-insert-command))
 
 (after! cdlatex
   (map! :map cdlatex-mode-map
         "C-c ?" nil
         ;; Use "{ TAB" snippet instead
         "C-c {" nil
+        "'" #'my/cdlatex-math-modify-word-default
         :localleader
         "h" #'cdlatex-command-help
         "{" #'cdlatex-environment
@@ -146,3 +192,12 @@
     "<-" "\\leftarrow"
     )
   )
+
+(after! (laas cdlatex)
+  (map! :map cdlatex-mode-map
+        "SPC" #'my/latex-smart-text-space)
+  )
+
+; Org
+
+(load! "org.el")

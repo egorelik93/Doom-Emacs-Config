@@ -98,8 +98,19 @@ in-place, the old list reference does not remain valid."
         :i [S-return] #'+org/shift-return
         :i "S-RET"    #'+org/shift-return)
 
+  ;; Modified from org-cdlatex-math-modify
+  (defun my/org-cdlatex-math-modify-word-default (&optional _arg)
+  "Execute `my/cdlatex-math-modify-word-default' in LaTeX fragments.
+Revert to the normal definition outside of these fragments."
+  (interactive "P")
+  (if (org-inside-LaTeX-fragment-p)
+      (call-interactively 'my/cdlatex-math-modify-word-default)
+    (let (org-cdlatex-mode)
+      (call-interactively (key-binding (vector last-input-event))))))
+
   (map! :map org-cdlatex-mode-map
         "C-c {" nil
+        "'" #'my/org-cdlatex-math-modify-word-default
         :localleader
         "{" #'org-cdlatex-environment-indent
         )
@@ -447,4 +458,15 @@ Skips the write when called non-interactively and nothing has changed."
       nil))
 
   (advice-add #'laas-org-mathp :filter-return #'my/laas-org-mathp-texmathp)
+  )
+
+(defun my/org-latex-smart-text-space ()
+    "In math mode, wrap the preceding word in \\mathrm{}; otherwise insert a space.
+Does not fire on single-letter words or on the argument of a \\command."
+    (interactive)
+    (my/latex-smart-text-space-common #'org-self-insert-command))
+
+(after! (laas org)
+  (map! :map org-cdlatex-mode-map
+        "SPC" #'my/org-latex-smart-text-space)
   )
