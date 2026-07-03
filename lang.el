@@ -125,6 +125,17 @@
 
 ; Latex
 
+;; This is almost a clone of laas-mathp, but we're using it outside of laas too,
+;; to try to avoid taking an unnecessary dependency.
+;; In org.el, we advise laas-mathp to have the same behavior as this,
+;; so we can use laas-mathp freely wherever laas is loaded.
+(defun my/mathp ()
+  "Determine whether point is within a LaTeX maths block."
+    (cond
+     ((derived-mode-p 'latex-mode) (texmathp))
+     ((derived-mode-p 'org-mode) (my/org-mathp))
+     (t nil)))
+
 ;; Created by Claude
 (defun my/cdlatex-math-modify-word-default (arg)
   "Like `cdlatex-math-modify', but with 0- and 1-prefix scope swapped.
@@ -142,7 +153,7 @@ arg is passed through unchanged to `cdlatex-math-modify'."
 
 ;; Created by Claude
 (defun my/latex-smart-text-space-common (orig-fn)
-  (if (laas-mathp)
+  (if (my/mathp)
       (let* ((end (point))
              (start (save-excursion (skip-chars-backward "a-zA-Z") (point)))
              (word-length (- end start))
@@ -180,10 +191,13 @@ Does not fire on single-letter words or on the argument of a \\command."
         ;; Use "{ TAB" snippet instead
         "C-c {" nil
         "'" #'my/cdlatex-math-modify-word-default
+        "SPC" #'my/latex-smart-text-space
         :localleader
         "h" #'cdlatex-command-help
         "{" #'cdlatex-environment
         )
+
+  (push '(?\C-i ("`")) cdlatex-math-symbol-alist)
   )
 
 (after! laas
@@ -191,11 +205,6 @@ Does not fire on single-letter words or on the argument of a \\command."
     :cond #'laas-mathp
     "<-" "\\leftarrow"
     )
-  )
-
-(after! (laas cdlatex)
-  (map! :map cdlatex-mode-map
-        "SPC" #'my/latex-smart-text-space)
   )
 
 ; Org

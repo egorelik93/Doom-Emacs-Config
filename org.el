@@ -80,6 +80,20 @@ in-place, the old list reference does not remain valid."
 
 ;(add-hook 'org-capture-mode-hook (lambda () (redisplay t)))
 
+;; The standard org--mathp advice on texmathp breaks laas
+(defun my/org--math-p (orig-texmathp &rest args)
+  (apply orig-texmathp args))
+
+; Modified from laas-org-mathp
+(defun my/org-mathp ()
+  "Determine whether the point is within a LaTeX fragment or environment."
+  (and
+   (or (org-inside-LaTeX-fragment-p)
+       (eq (org-element-type (org-element-at-point)) 'latex-environment))
+   (letf! ((#'org--math-p #'my/org--math-p))
+     (texmathp)))
+)
+
 (after! org
   (setq org-hide-emphasis-markers t)
 
@@ -108,9 +122,25 @@ Revert to the normal definition outside of these fragments."
     (let (org-cdlatex-mode)
       (call-interactively (key-binding (vector last-input-event))))))
 
+  (defun my/org-latex-smart-text-space ()
+    "In math mode, wrap the preceding word in \\mathrm{}; otherwise insert a space.
+Does not fire on single-letter words or on the argument of a \\command."
+    (interactive)
+    (my/latex-smart-text-space-common #'org-self-insert-command))
+
+  (defun my/org-cdlatex-math-symbol ()
+    (interactive)
+    (if (my/org-mathp)
+        (call-interactively #'cdlatex-math-symbol)
+      (call-interactively #'org-self-insert-command)
+      )
+    )
+
   (map! :map org-cdlatex-mode-map
         "C-c {" nil
         "'" #'my/org-cdlatex-math-modify-word-default
+        "`" #'my/org-cdlatex-math-symbol
+        "SPC" #'my/org-latex-smart-text-space
         :localleader
         "{" #'org-cdlatex-environment-indent
         )
@@ -446,27 +476,5 @@ Skips the write when called non-interactively and nothing has changed."
 ;     (advice-add #'+vulpea-try-init-db-a :after #'my/vulpea-aggregate-setup))
 
 (after! (laas org)
-  ; The standard org--mathp advice on texmathp breaks laas
-  (defun my/laaas-org--math-p (orig-texmathp &rest args)
-    (apply orig-texmathp args))
-
-  (defun my/laas-org-mathp-texmathp (org-mathp)
-    (if org-mathp
-        (letf! ((#'org--math-p #'my/laaas-org--math-p))
-          (texmathp)
-          )
-      nil))
-
-  (advice-add #'laas-org-mathp :filter-return #'my/laas-org-mathp-texmathp)
-  )
-
-(defun my/org-latex-smart-text-space ()
-    "In math mode, wrap the preceding word in \\mathrm{}; otherwise insert a space.
-Does not fire on single-letter words or on the argument of a \\command."
-    (interactive)
-    (my/latex-smart-text-space-common #'org-self-insert-command))
-
-(after! (laas org)
-  (map! :map org-cdlatex-mode-map
-        "SPC" #'my/org-latex-smart-text-space)
+  (advice-add #'laas-org-mathp :override #'my/org-mathp)
   )
