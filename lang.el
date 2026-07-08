@@ -205,6 +205,9 @@ Does not fire on single-letter words or on the argument of a \\command."
     :cond #'laas-mathp
     "<-" "\\leftarrow"
     )
+
+  ;; This just doesn't really work for me
+  (setq laas-enable-auto-space nil)
   )
 
 ; Org
