@@ -1131,6 +1131,62 @@ are served via wsl.localhost using `my/wsl-distro-name'."
    new-window))
 
 
+(after! tramp
+  ;;(setq tramp-shell-prompt-pattern
+  ;;      "\\(?:^\\|\\r\\)[^]#$%>\\n]*#?[]#$%>].* *\\(^\\[[0-9;]*[a-zA-Z] *\\)*")
+  ;;      "\\(?:^\\|\\r\\)\\(?:[ \t]*\\r?\\n\\)*[^]#$%>\n]*#?[]#$%>].* *\\(^\\[[0-9;]*[a-zA-Z] *\\)*")
+  ;;      (concat
+  ;;       "\\(?:"
+  ;;       "^[^@\n]+@[^ \n]+ MINGW64 [^\n]*\r?\n\\$ *"
+  ;;       "\\)\\|\\(?:"
+  ;;       "\\(?:^\\|\r\\)[^]#$%>\n]*#?[]#$%>].* *\\(?:^\\[[0-9;]*[a-zA-Z] *\\)*"
+  ;;       "\\)"))
+
+  ;; Not currently necessary, but I already created it.
+  (setq tramp-shell-prompt-pattern
+        (rx
+         ;(?? (seq
+         ;    (| bol "\r")
+         ;    (+ (not (any "@\n"))) "@"
+         ;    (+ (not (any " \n"))) " MINGW64 "
+         ;    (* (not "\n")) (? "\r") "\n" eol (* " ")))
+         ;(??
+         ; (| bol "\r")
+         ; (* alpha)
+         ; ": cannot set terminal process group (-1): Inappropriate ioctl for device"
+         ; (* (not "\n")) (? "\r") "\n" eol (* " ")
+         ; )
+         ;(??
+         ; (| bol "\r")
+         ; (* alpha)
+         ; ": no job control in this shell"
+         ; (* (not "\n")) (? "\r") "\n" eol (* " ")
+         ; )
+         (| bol "\r")
+         (* (* blank) (? "\r") "\n")
+         (* (not (any "\n#$%>]")))
+         (? "#") (any "#$%>]") (* (not "\n")) (* " ")
+         (* "\e[" (? "?") (* (any digit ";")) letter (* " "))
+         ))
+
+  ;; These arguments are essential for -T working with wsl; we either need to set them up here or add them manually
+  ;; to tramp-remote-shell.
+  ;; The necessary arguments for bash and zsh are already built in -
+  ;; but any deviations in tramp-remote-shell from their regex would need to be accounted for here.
+  (after! tramp-sh
+    (push `(,(rx (| bos "/") "sh" eos) . "-noediting -norc -noprofile") tramp-sh-extra-args))
+
+  (add-to-list
+   'tramp-methods
+   '("sshwsl" (tramp-login-program "ssh")
+     (tramp-login-args
+      (("-l" "%u") ("-p" "%p") ("%c") ("-e" "none") ("-T")
+       ("-o" "RemoteCommand=\"wsl.exe -e env HISTFILE=/dev/null PS1='$ ' %l\"") ("%h")))
+     (tramp-async-args (("-q"))) (tramp-remote-shell "zsh")
+     (tramp-remote-shell-login ("-l")) (tramp-remote-shell-args ("-c"))))
+  )
+
+
 
 
 ; Must be at end of file
