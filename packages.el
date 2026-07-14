@@ -85,3 +85,7 @@
   :recipe (:host github :repo "manzaltu/claude-code-ide.el"))
 
 (package! org-fragtog)
+
+(unless (featurep :system 'windows)
+  (package! msgpack)
+  (package! tramp-rpc :recipe (:host github :repo "ArthurHeymans/emacs-tramp-rpc" :files ("lisp/*.el"))))

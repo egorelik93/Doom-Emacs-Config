@@ -1039,6 +1039,9 @@ mapping will always be the ESC prefix map."
                                          (ghostel-send-key "n" "ctrl")
                                        (ghostel--redispatch-scroll-event 'next)))
         )
+
+  (add-to-list 'ghostel-tramp-shells '("sshx" login-shell))
+  (add-to-list 'ghostel-tramp-shells '("rpc" login-shell))
   )
 
 (after! vterm
@@ -1061,6 +1064,9 @@ mapping will always be the ESC prefix map."
         ctl-dbl-tap-wsl #'boon-set-command-state
         ctl-dbl-tap #'boon-set-command-state
         )
+
+  (add-to-list 'vterm-tramp-shells '("sshx" login-shell))
+  (add-to-list 'vterm-tramp-shells '("rpc" login-shell))
   )
 
 (use-package! claude-code-ide
@@ -1185,6 +1191,10 @@ are served via wsl.localhost using `my/wsl-distro-name'."
      (tramp-async-args (("-q"))) (tramp-remote-shell "zsh")
      (tramp-remote-shell-login ("-l")) (tramp-remote-shell-args ("-c"))))
   )
+
+(unless (featurep :system 'windows)
+  (use-package! msgpack :after tramp)
+  (use-package! tramp-rpc :after (msgpack tramp)))
 
 
 
