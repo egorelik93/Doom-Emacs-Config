@@ -164,6 +164,7 @@
                 ,@(static-when my-log-evil-keybinds
                     '((message "%S" forms)))
                 (push (macroexp-progn forms) doom--map-forms))
+       (setq doom--map-last-prefix nil)
        (setq doom--map-batch-forms nil)
        )
     ))
