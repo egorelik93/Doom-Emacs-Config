@@ -788,37 +788,37 @@ mapping will always be the ESC prefix map."
 
 (setq which-key-show-transient-maps t)
 
-(setq which-key-paging-prefixes '(
-                                  "C-x"
-                                  "C-x r"
-                                  "C-x t"
-                                  "C-x v"
-                                  "C-x w"
-                                  "C-h"
-                                  "<ESC>"))
-
-(after! which-key
-  ; Almost the same as above + which-key-paging-key, but works with leader key.
-  ; It does however require which-key-paging-key to already be set, and thus depends
-  ; on which-key already being loaded.
-  (defun map-which-key-paging-leader-prefixes (keys &optional map)
-    (seq-doseq (key keys)
-      (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key)))
-            (map-or-default (or map 'which-key-mode-map)))
-        (map! :leader :map map-or-default chord #'which-key-C-h-dispatch))))
-
-  (defmacro map-which-key-paging-localleader-prefixes (mode-map keys &optional package)
-    (let ((package-list (or package '())))
-      `(after! ,package-list
-         (seq-doseq (key ,keys)
-            (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
-              (map! :localleader :map ,mode-map chord #'which-key-C-h-dispatch))))))
-
-  (map-which-key-paging-leader-prefixes `("" "h" "p" "w" "b" "z" "[" "]" ,alt-tap))
-
-  (map-which-key-paging-localleader-prefixes org-mode-map '("") org)
-  (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
-)
+;(setq which-key-paging-prefixes '(
+;                                  "C-x"
+;                                  "C-x r"
+;                                  "C-x t"
+;                                  "C-x v"
+;                                  "C-x w"
+;                                  "C-h"
+;                                  "<ESC>"))
+;
+;(after! which-key
+;  ; Almost the same as above + which-key-paging-key, but works with leader key.
+;  ; It does however require which-key-paging-key to already be set, and thus depends
+;  ; on which-key already being loaded.
+;  (defun map-which-key-paging-leader-prefixes (keys &optional map)
+;    (seq-doseq (key keys)
+;      (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key)))
+;            (map-or-default (or map 'which-key-mode-map)))
+;        (map! :leader :map map-or-default chord #'which-key-C-h-dispatch))))
+;
+;  (defmacro map-which-key-paging-localleader-prefixes (mode-map keys &optional package)
+;    (let ((package-list (or package '())))
+;      `(after! ,package-list
+;         (seq-doseq (key ,keys)
+;            (let ((chord (if (string-empty-p key) which-key-paging-key (concat key " " which-key-paging-key))))
+;              (map! :localleader :map ,mode-map chord #'which-key-C-h-dispatch))))))
+;
+;  (map-which-key-paging-leader-prefixes `("" "h" "p" "w" "b" "z" "[" "]" ,alt-tap))
+;
+;  (map-which-key-paging-localleader-prefixes org-mode-map '("") org)
+;  (map-which-key-paging-leader-prefixes '("C-v") 'org-mode-map)
+;)
 
 ; Having issues with it hanging.
 (set-file-template! 'gitignore-mode :ignore t)
