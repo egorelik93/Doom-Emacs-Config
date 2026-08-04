@@ -1006,6 +1006,11 @@ mapping will always be the ESC prefix map."
       )
 
 (after! ghostel
+  ;; Ported from vterm module
+  (map! :map ghostel-semi-char-mode-map
+        "C-q"   #'ghostel-send-next-key)
+
+
   (defvar ghostel-boon-insert-map (make-boon-map 'ghostel-mode 'insert))
   (map! :map ghostel-boon-insert-map
         "<escape>" nil
