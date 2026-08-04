@@ -73,7 +73,8 @@
 ; which is not what I want.
 (package! god-mode)
 
-(package! evil-tutor)
+(when my-enable-evil
+  (package! evil-tutor))
 
 (package! boon)
 
