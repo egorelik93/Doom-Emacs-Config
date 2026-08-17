@@ -57,12 +57,17 @@ in-place, the old list reference does not remain valid."
     (setcdr c (cons el (cdr c)))
     (cdr padded-list)))
 
+(defun my-dashboard/org-roam-node-find (&optional arg)
+  "Wrapper around org-roam-node-find compatible with doom dashboard"
+  (interactive "P")
+  (org-roam-node-find arg))
+
 (insert-into-list +dashboard-menu-sections 3
   '("Find org-roam node"
     :icon (nerd-icons-icon-for-mode 'org-mode :face '+dashboard-menu-title)
     :when (modulep! :lang org +roam)
-    :face (:inherit (+dashboard-menu-title bold))
-    :action org-roam-node-find))
+    ;:face (:inherit (+dashboard-menu-title bold))
+    :action my-dashboard/org-roam-node-find))
 
 (after! org-protocol
   ;(advice-add #'org-capture-select-template
