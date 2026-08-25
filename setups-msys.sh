@@ -35,7 +35,7 @@ done
 # --- Configuration -----------------------------------------------------------
 
 # Specify which version version was used to compile emacs
-TARGET_GCC_VERSION="14.2.0-1"   # full version with epoch, as used in package filenames
+TARGET_GCC_VERSION="16.2.0-3"   # full version with epoch, as used in package filenames
 
 # Adjust the package name for your MSYS2 subsystem:
 #   MINGW64/UCRT64:  mingw-w64-x86_64-gcc
