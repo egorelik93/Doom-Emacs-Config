@@ -33,12 +33,6 @@
     )
   )
 
-(after! cc-mode
-  ; Resolve tree-sitter bugs
-  (add-to-list 'major-mode-remap-alist '(c-mode . nil))
-  (add-to-list 'major-mode-remap-alist '(c++-mode . nil))
-  (add-to-list 'major-mode-remap-alist '(c-or-c++-mode . nil)))
-
 ; Rust
 
 (after! rustic
