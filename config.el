@@ -35,7 +35,8 @@ are open."
                        'face '(italic default))
            "Really quit Emacs?")))
 
-(setq confirm-kill-emacs #'my-quit-fn)
+(when (boundp '+doom-quit-messages)
+  (setq confirm-kill-emacs #'my-quit-fn))
 
 (when (eq confirm-kill-emacs #'my-quit-fn)
   (advice-add 'handle-delete-frame :around
@@ -58,7 +59,7 @@ are open."
                        'face '(italic default))))
   t)
 
-(when (not confirm-kill-emacs)
+(when (and (boundp '+doom-quit-messages) (not confirm-kill-emacs))
   (add-hook! kill-emacs-query-functions #'my-noask-quit-message))
 
 
@@ -1200,6 +1201,25 @@ are served via wsl.localhost using `my/wsl-distro-name'."
 (unless (featurep :system 'windows)
   (use-package! msgpack :after tramp)
   (use-package! tramp-rpc :after (msgpack tramp)))
+
+
+(when (featurep :system 'windows)
+  ;; I am encountering an error when running doom in windows terminals:
+  ;; 'recentering a window that does not display current buffer'.
+  ;; The error is raised by recentering code called by set-screen-color,
+  ;; when called by w32-tty-setup-colors.
+  ;; I was able to track down that this happens when using doom dashboard,
+  ;; but I have no idea why.
+  ;; Emacs is usable after this error, but it messes up the remainder
+  ;; of the tty-setup-hook, which I depend on.
+  ;; I am pretty sure this is a bug, but not sure whose.
+  ;; In any case, suppressing the error near the source seems to work.
+  (advice-add 'set-screen-color :around
+              (lambda (orig-fun &rest args)
+                (condition-case nil
+                    (apply orig-fun args)
+                  (error nil))))
+  )
 
 
 

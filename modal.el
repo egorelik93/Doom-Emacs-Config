@@ -241,12 +241,13 @@
   (map! :map 'boon-command-map ctl-tap #'boon-set-insert-like-state)
   (map! :map 'boon-command-map ctl-dbl-tap #'boon-set-insert-like-state)
 
-  (defvar +dashboard-mode-boon-map (make-boon-map '+dashboard-mode 'command +dashboard-mode-map))
-  (defvar +dashboard-mode-boon-special-map (make-boon-map '+dashboard-mode 'special +dashboard-mode-map))
+  (when (boundp '+dashboard-mode-map)
+    (defvar +dashboard-mode-boon-map (make-boon-map '+dashboard-mode 'command +dashboard-mode-map))
+    (defvar +dashboard-mode-boon-special-map (make-boon-map '+dashboard-mode 'special +dashboard-mode-map))
 
-  (map! :map (+dashboard-mode-boon-map +dashboard-mode-boon-special-map)
-        "i" #'+dashboard/backward-button
-        "k" #'+dashboard/forward-button)
+    (map! :map (+dashboard-mode-boon-map +dashboard-mode-boon-special-map)
+          "i" #'+dashboard/backward-button
+          "k" #'+dashboard/forward-button))
 
   (map! :leader :desc "boon" alt-tap boon-command-map)
   (unless (modulep! :editor evil)
