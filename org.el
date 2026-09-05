@@ -483,4 +483,9 @@ Skips the write when called non-interactively and nothing has changed."
 
 (after! (laas org)
   (advice-add #'laas-org-mathp :override #'my/org-mathp)
+
+  (aas-set-snippets 'org-mode
+    ;; Zero-width space
+    "\\zwsp" "​"
+    )
   )
