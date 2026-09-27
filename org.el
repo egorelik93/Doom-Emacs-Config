@@ -168,6 +168,7 @@ a plain integer (from C-u 3 etc.)."
       (list (* base (expt 4 n)))))
 
   (map! :localleader :mode org-mode
+        (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
         :prefix ("z" . "previews/misc")
         :desc "Preview latex" "l" #'org-latex-preview
         :desc "Preview all latex" "L" #'my/org-latex-preview-all
@@ -176,6 +177,11 @@ a plain integer (from C-u 3 etc.)."
   ; but in the environments I have tried this on, the scale is too big.
   (setq org-format-latex-options
         (plist-put org-format-latex-options :scale 0.5))
+
+  ;; Not sure I'd ever actually use this. But it makes me feel better
+  ;; about using raw zwsp as an escape character to be stripped out.
+  (add-to-list 'org-entities-user
+               '("zwsp" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "200B" "\u200B"))
 
   (defun my/org-set-created-property ()
     "Set CREATED property with current timestamp if not already set."
@@ -482,10 +488,14 @@ Skips the write when called non-interactively and nothing has changed."
 ;     (advice-add #'+vulpea-try-init-db-a :after #'my/vulpea-aggregate-setup))
 
 (after! (laas org)
-  (advice-add #'laas-org-mathp :override #'my/org-mathp)
+  (advice-add #'laas-org-mathp :override #'my/org-mathp))
 
-  (aas-set-snippets 'org-mode
-    ;; Zero-width space
-    "\\zwsp" "​"
-    )
+(after! ox
+  ;; Not thrilled about this, but hoping I never need an actual zwsp
+  (defun +org-export-remove-zero-width-space (text _backend _info)
+    "Remove zero width spaces from TEXT."
+    (unless (org-export-derived-backend-p 'org)
+      (replace-regexp-in-string "\u200B" "" text)))
+
+  (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
   )
