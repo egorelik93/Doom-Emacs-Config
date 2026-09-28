@@ -103,9 +103,10 @@ in-place, the old list reference does not remain valid."
      (texmathp)))
 )
 
-(after! org
-  (setq org-hide-emphasis-markers t)
+;; Among other things, sets org-hide-emphasis-markers to t.
+(add-hook 'org-mode-hook #'+org-pretty-mode)
 
+(after! org
   (setq org-preview-latex-default-process 'dvisvgm)
   (setq org-latex-create-formula-image-program 'dvisvgm)
 
@@ -494,6 +495,22 @@ Skips the write when called non-interactively and nothing has changed."
 ;   (after! vulpea
 ;     (advice-add #'+vulpea-try-init-db-a :after #'my/vulpea-aggregate-setup))
 
+(defun my/org-in-inline-code-p ()
+  "Non-nil if point is inside ~code~ or =verbatim= markup."
+  (memq (org-element-type (org-element-context))
+        '(code)))
+
+(after! (aas org)
+  (defun my/org-in-inline-code-and-pretty-p ()
+    (and +org-pretty-mode
+     (my/org-in-inline-code-p)))
+
+  (aas-set-snippets 'org-mode
+    :cond #'my/org-in-inline-code-and-pretty-p
+    "~~" "\u200B~\u200B"
+    )
+  )
+
 (after! (laas org)
   (advice-add #'laas-org-mathp :override #'my/org-mathp))
 
@@ -518,3 +535,4 @@ zero-width space is removed. The org backend is left untouched."
 
   (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
   )
+11
