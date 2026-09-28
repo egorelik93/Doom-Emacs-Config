@@ -115,6 +115,11 @@
          (not (eq major-mode 'messages-buffer-mode)))
     )
 
+  ;; Copied and extended from boon, which doesn't include ghostel
+  (defun boon-shell-mode-p ()
+    "Is the `major-mode' any of the shell modes?"
+    (derived-mode-p 'comint-mode 'eshell-mode 'term-mode 'vterm-mode 'ghostel-mode))
+
   ; The normal implementation applies to any special mode, which includes lots of modes
   ; without custom keybindings.
   (defun boon-special-mode-p ()
