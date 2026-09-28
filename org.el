@@ -191,6 +191,28 @@ a plain integer (from C-u 3 etc.)."
   (add-to-list 'org-entities-user
                `("zwspinternal" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "" ,my-org-zwsp-placeholder))
 
+  ;; Created by Claude, to fix issue with org-pretty-mode/org-hide-emphasis-markers
+  ;; incorectly hiding characters inside verbatim/source.
+
+  ;; `org-do-emphasis-faces' resumes scanning right after an opening marker
+  ;; (to allow nested emphasis), so it also rescans inside ~code~/=verbatim=.
+  ;; A marker in there preceded by a "pre" char, e.g. the first ~ in
+  ;; ~foo(~~bar)~, then starts a bogus nested span and gets hidden, so the
+  ;; display disagrees with the parser/export.  Verbatim contents are opaque,
+  ;; so skip past the closing marker instead.
+  (defun my/org-do-emphasis-faces-skip-verbatim-a (fn limit)
+    (let ((res (funcall fn limit)))
+      (when (and res (memq (char-before) '(?~ ?=)))
+        (let ((start (if (save-excursion (backward-char) (bolp))
+                         (1- (point))
+                       (- (point) 2))))
+          (when (save-excursion (goto-char start) (looking-at org-verbatim-re))
+            (goto-char (match-end 2)))))
+      res))
+
+  (advice-add #'org-do-emphasis-faces :around #'my/org-do-emphasis-faces-skip-verbatim-a)
+
+
   (defun my/org-set-created-property ()
     "Set CREATED property with current timestamp if not already set."
     (unless (org-entry-get nil "CREATED")
@@ -495,22 +517,6 @@ Skips the write when called non-interactively and nothing has changed."
 ;   (after! vulpea
 ;     (advice-add #'+vulpea-try-init-db-a :after #'my/vulpea-aggregate-setup))
 
-(defun my/org-in-inline-code-p ()
-  "Non-nil if point is inside ~code~ or =verbatim= markup."
-  (memq (org-element-type (org-element-context))
-        '(code)))
-
-(after! (aas org)
-  (defun my/org-in-inline-code-and-pretty-p ()
-    (and +org-pretty-mode
-     (my/org-in-inline-code-p)))
-
-  (aas-set-snippets 'org-mode
-    :cond #'my/org-in-inline-code-and-pretty-p
-    "~~" "\u200B~\u200B"
-    )
-  )
-
 (after! (laas org)
   (advice-add #'laas-org-mathp :override #'my/org-mathp))
 
@@ -535,4 +541,3 @@ zero-width space is removed. The org backend is left untouched."
 
   (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
   )
-11
