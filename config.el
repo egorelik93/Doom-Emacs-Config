@@ -1082,7 +1082,11 @@ mapping will always be the ESC prefix map."
                 "C-'" #'claude-code-ide-menu)
   (claude-code-ide-emacs-tools-setup) ; Optionally enable Emacs MCP tools
 
-  (setq claude-code-ide-terminal-backend 'vterm)
+  ;; Be careful to not use left arrow to get to old sessions;
+  ;; while this seemingly worked with vterm, this is actually the agent picker,
+  ;; and it turns the current session into a background agent
+  ;; (thus forcing fullscreen render and breaking scrolling in ghostel).
+  (setq claude-code-ide-terminal-backend 'ghostel)
 
   (setq claude-code-ide-window-width 40)
 
