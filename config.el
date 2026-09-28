@@ -524,6 +524,7 @@ mapping will always be the ESC prefix map."
 
   (map! :ei "C-." #'completion-at-point)
   (map! :map 'corfu-map
+        "<tab>" #'corfu-complete
         "C-TAB" #'corfu-reset
         "C-<tab>" #'corfu-reset
         "<down>" #'my/corfu-next-or-down
@@ -532,7 +533,7 @@ mapping will always be the ESC prefix map."
         :e "C-<return>" #'corfu-quit
         :e ctl-tap #'corfu-quit
         :e ctl-tap-wsl #'corfu-quit
-        :ei "C-." #'corfu-insert-separator)
+        :ei "M-RET" #'corfu-insert-separator)
 
   ; Make <escape> in corfu popup quit the popup
   ; https://github.com/emacs-evil/evil-collection/issues/676#issuecomment-1604386513
