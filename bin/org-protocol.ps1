@@ -7,6 +7,11 @@ param(
     [string]$uri
 )
 
+$uri = [regex]::Replace($uri, '[^\x00-\x7F]+', {
+                            param($m)
+                            -join ([Text.Encoding]::UTF8.GetBytes($m.Value) | ForEach-Object { '%{0:X2}' -f $_ })
+                        })
+
 # Run emacs
 $args = @(
     if ($uri -like "org-protocol://store-link*") { "-r" }
