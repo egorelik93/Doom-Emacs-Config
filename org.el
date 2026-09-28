@@ -1,5 +1,8 @@
 ;;; org.el -*- lexical-binding: t; -*-
 
+(defconst my-org-zwsp-placeholder "\uF8F0")
+
+
 (setq org-return-follows-link t)
 
 
@@ -180,8 +183,12 @@ a plain integer (from C-u 3 etc.)."
 
   ;; Not sure I'd ever actually use this. But it makes me feel better
   ;; about using raw zwsp as an escape character to be stripped out.
+  ;; Both of these are used by the filter code lower down to try and explicitly produce zwsp.
   (add-to-list 'org-entities-user
-               '("zwsp" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "200B" "\u200B"))
+               '("zwsp" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "" "\u200B"))
+  ;; Do not use directly
+  (add-to-list 'org-entities-user
+               `("zwspinternal" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "" ,my-org-zwsp-placeholder))
 
   (defun my/org-set-created-property ()
     "Set CREATED property with current timestamp if not already set."
@@ -491,11 +498,23 @@ Skips the write when called non-interactively and nothing has changed."
   (advice-add #'laas-org-mathp :override #'my/org-mathp))
 
 (after! ox
-  ;; Not thrilled about this, but hoping I never need an actual zwsp
-  (defun +org-export-remove-zero-width-space (text _backend _info)
-    "Remove zero width spaces from TEXT."
-    (unless (org-export-derived-backend-p 'org)
-      (replace-regexp-in-string "\u200B" "" text)))
+  (defun +org-export-replace-zwsp-with-placeholder (backend)
+    (unless (org-export-derived-backend-p backend 'org 'html 'latex)
+      (goto-char (point-min))
+      (while (re-search-forward "\\\\zwsp\\([^a-zA-Z0-9]\\|\\'\\)" nil t)
+        (replace-match "\\\\zwspinternal\\1" t))))
+
+  (add-to-list 'org-export-before-parsing-functions #'+org-export-replace-zwsp-with-placeholder t)
+
+  ;; Based on the filter code out in the wild, but modified by Claude.
+  (defun +org-export-remove-zero-width-space (text backend _info)
+    "Strip incidental zero-width spaces in TEXT.
+The placeholder (as emitted by the zwspinternal entity, on backends
+where it expands to it) collapses to a single literal zero-width space; a lone
+zero-width space is removed. The org backend is left untouched."
+    (unless (org-export-derived-backend-p backend 'org)
+      (let* ((text (replace-regexp-in-string "\u200B" "" text)))
+        (replace-regexp-in-string my-org-zwsp-placeholder "\u200B" text))))
 
   (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
   )
