@@ -219,6 +219,9 @@
        (:if (not (or my-enable-evil my-use-doom-default-bindings)) (default +smartparens))
 
        (:if (not (or my-enable-evil my-use-doom-default-bindings)) default-bindings)
+
+       :lang
+       org-pretty          ; stop org fontifying markup inside code/verbatim
        )
 
 
