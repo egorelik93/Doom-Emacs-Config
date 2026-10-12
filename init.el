@@ -287,6 +287,9 @@ continues to function despite using a dynamic list of modules."
             default-bindings
             ))
 
+       :editor
+       (aas +laas)
+
        :lang
        org-pretty          ; stop org fontifying markup inside code/verbatim
        ))
