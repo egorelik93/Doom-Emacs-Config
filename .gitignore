@@ -3,6 +3,7 @@ private.el
 local-font-config.el
 debug-adapters
 *.local.el
+local/
 *.elc
 all-bindings.el
 upstream-hash.eld

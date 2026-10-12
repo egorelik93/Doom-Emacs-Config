@@ -1233,3 +1233,5 @@ are served via wsl.localhost using `my/wsl-distro-name'."
 ;
 (when (file-exists-p "~/.doom.d/config.local.el")
   (load-file "~/.doom.d/config.local.el"))
+(when (file-exists-p (concat doom-user-dir "local/config.el"))
+  (load! (concat doom-user-dir "local/config.el")))

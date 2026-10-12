@@ -90,3 +90,11 @@
 (unless (featurep :system 'windows)
   (package! msgpack)
   (package! tramp-rpc :recipe (:host github :repo "ArthurHeymans/emacs-tramp-rpc" :files ("lisp/*.el"))))
+
+
+
+
+; Must be at end of file
+;
+(when (file-exists-p (concat doom-user-dir "local/packages.el"))
+  (load! (concat doom-user-dir "local/packages.el")))

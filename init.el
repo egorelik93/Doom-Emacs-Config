@@ -14,6 +14,17 @@
 ;;      Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
 ;;      directory (for easy access to its source code).
 
+(defun my/trace (e)
+  (print! "%S" e)
+  e
+  )
+
+(defmacro my-doom-module-list! (doom-spec)
+  "Take a (doom! modules) form, and extract modules as a list.
+
+This allow +lookup/documentation to continue working."
+    (list 'backquote (cdr doom-spec)))
+
 (defconst my-enable-evil nil)
 (defconst my-enable-evil-everywhere nil)
 (defconst my-redirect-evil-emacs-maps t)
@@ -26,6 +37,90 @@
 ; I have configured it so that if this is nil, we will ignore insert bindings.
 (setq evil-disable-insert-state-bindings t)
 
+(defvar my-modules-replace-list nil)
+(defvar my-modules-local-doom nil
+  "Additional modules to enable.
+These come before the config modules.")
+(defvar my-modules-local-user nil
+  "Additional modules to enable.
+These come after the config modules.")
+(defvar my-modules-local-lang nil
+  "An alternative to the common case of replacing the first :lang list.
+Do not use this if replacing any :lang sections manually.")
+(defvar my-modules-local-tools nil
+    "An alternative to the common case of replacing the first :tools list.
+Do not use this if replacing any :lang sections manually.")
+
+(when (and noninteractive
+           (file-exists-p (concat doom-user-dir "local/doom-modules.el")))
+  (load! (concat doom-user-dir "local/doom-modules.el")))
+
+(when (and noninteractive my-modules-local-lang)
+  (add-to-list 'my-modules-replace-list `(:lang . ,my-modules-local-lang))
+  )
+(when (and noninteractive my-modules-local-tools)
+  (add-to-list 'my-modules-replace-list `(:tools . ,my-modules-local-tools))
+  )
+
+(defun my-modules-replace (replace-list modules)
+  (let ((replace-alist (seq-map (lambda (x) (if (consp x) x (cons x nil))) replace-list)))
+    (my-modules-replace--rec replace-alist modules t nil)))
+
+(defun my-modules-replace--rec (replace-list modules top inclusions)
+  (require 'cl-lib)
+  (let* ((category-to-replace nil))
+    (seq-mapcat
+     (lambda (x)
+       (cond
+        ((and top (keywordp x))
+         (if-let* ((a (assoc x replace-list)))
+             (progn
+               (setq replace-list (cl-delete x replace-list :key #'car :count 1))
+               (if (eq (car (cdr a)) :keep)
+                   (progn
+                     (setq inclusions (cdr (cdr a)))
+                     (when inclusions (setq category-to-replace x))
+                     (list x)
+                     )
+                 (setq category-to-replace x)
+                 (cond
+                  ((keywordp (car (cdr a))) (cdr a))
+                  ((cdr a) (cons x (cdr a)))
+                  (t nil))))
+           (setq category-to-replace nil)
+           (setq inclusions nil)
+           (list x)))
+        ((and category-to-replace (not inclusions)) nil)
+        ((and (listp x) (keywordp (car x)))
+         (if (memq (car x) '(:if :when :unless))
+             (when-let* ((module (cdr (cdr x)))
+                         (r (my-modules-replace--rec replace-list module nil inclusions)))
+               (cons (car x) (cons (car (cdr x)) r)))
+           (list (my-modules-replace--rec replace-list x nil inclusions))))
+        ((and (listp x) category-to-replace)
+         (if (memq (car x) inclusions) (list x) nil))
+        ((listp x)
+         (if-let* ((a (assoc (car x) replace-list)))
+             (if (cdr a) (list (cdr a)) nil)
+           (list (my-modules-replace--rec replace-list x nil inclusions))))
+        (category-to-replace
+         (if (memq x inclusions) (list x) nil))
+        ((not (keywordp x))
+         (if-let* ((a (assoc x replace-list)))
+             (if (cdr a) (list (cdr a)) nil)
+           (list x)))
+        (t (list x))))
+     modules)))
+
+(defmacro my-doom! (doom)
+  "This wrapper around doom! ensures that +lookup/documentation (:leader c k)
+continues to function despite using a dynamic list of modules."
+  (let ((module-spec (cdr doom)))
+    `(doom! (my-modules-replace my-modules-replace-list
+                                ,(list 'backquote module-spec)))
+    ))
+
+(my-doom!
 (doom! :input
        ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
        ;;chinese
@@ -66,8 +161,10 @@
        ;;zen               ; distraction-free coding or writing
 
        :editor
-       (:if (and my-enable-evil my-enable-evil-everywhere) (evil +everywhere))
-       (:if (and my-enable-evil (not my-enable-evil-everywhere)) evil)
+       ,@(when my-enable-evil
+           (if my-enable-evil-everywhere
+               '((evil +everywhere))
+             '(evil)))
        ;(evil +everywhere); come to the dark side, we have cookies
        file-templates    ; auto-snippets for empty files
        fold              ; (nigh) universal code folding
@@ -95,7 +192,8 @@
        eshell            ; the elisp shell that works everywhere
        shell             ; simple shell REPL for Emacs
        ;;term              ; basic terminal emulator for Emacs
-       vterm             ; almost the best terminal emulation in Emacs
+       (:unless (featurep :system 'windows) vterm)
+       ;;vterm             ; almost the best terminal emulation in Emacs
        (ghostel +everywhere)           ; the best terminal emulation in Emacs
 
        :checkers
@@ -115,7 +213,7 @@
        ;;editorconfig      ; let someone else argue about tabs vs spaces
        ;;ein               ; tame Jupyter notebooks with emacs
        (eval +overlay)     ; run code, run (also, repls)
-       lookup              ; navigate your code and its documentation
+       ;;lookup              ; navigate your code and its documentation
        ;;llm               ; when I said you needed friends, I didn't mean...
        (lsp +lsp +booster +peek)        ; M-x vscode
        magit             ; a git porcelain for Emacs
@@ -126,6 +224,11 @@
        ;;tmux              ; an API for interacting with tmux
        tree-sitter         ; syntax and parsing, sitting in a tree...
        ;;upload            ; map local to remote projects via ssh/ftp
+
+       ;; Me: Use this area for any tools items we want shared across all machines
+       ;; Comment out in the first list.
+       :tools
+       lookup              ; navigate your code and its documentation
 
        :os
        (:if (featurep :system 'macos) macos)  ; improve compatibility with macOS
@@ -175,7 +278,7 @@
        ;;nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
        ;;odin              ; C, minus its footguns
-       (org +pretty)               ; organize your plain life in plain text
+       ;;(org +pretty)               ; organize your plain life in plain text
        ;;php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;graphviz          ; diagrams for confusing yourself even more
@@ -200,6 +303,12 @@
        ;;yaml              ; JSON, but readable
        ;;zig               ; C, but simpler
 
+       ;; Me: Use this area for any lang items we want shared across all machines
+       ;; Comment out in the first list.
+       :lang
+       emacs-lisp        ; drown in parentheses
+       (org +pretty)               ; organize your plain life in plain text
+
        :email
        ;;(mu4e +org +gmail)
        ;;notmuch
@@ -215,14 +324,16 @@
        :config
        ;;literate
        ;(default +bindings +smartparens))
-       (:if (or my-enable-evil my-use-doom-default-bindings) (default +bindings +smartparens))
-       (:if (not (or my-enable-evil my-use-doom-default-bindings)) (default +smartparens))
-
-       (:if (not (or my-enable-evil my-use-doom-default-bindings)) default-bindings)
+       ,@(if (or my-enable-evil my-use-doom-default-bindings)
+            '((default +bindings +smartparens))
+          '(
+            (default +smartparens)
+            default-bindings
+            ))
 
        :lang
        org-pretty          ; stop org fontifying markup inside code/verbatim
-       )
+       ))
 
 
 (when my-log-evil-keybinds
@@ -250,3 +361,11 @@
    (defun my-redirect-evil-maps ()
      (load! "redirect-evil-to-boon.elc" doom-user-dir)
      )))
+
+
+
+
+; Must be at end of file
+;
+(when (file-exists-p (concat doom-user-dir "local/init.el"))
+  (load! (concat doom-user-dir "local/init.el")))
