@@ -44,10 +44,10 @@ These come before the config modules.")
 (defvar my-modules-local-user nil
   "Additional modules to enable.
 These come after the config modules.")
-(defvar my-modules-local-lang nil
+(defvar my-modules-local-lang :keep
   "An alternative to the common case of replacing the first :lang list.
 Do not use this if replacing any :lang sections manually.")
-(defvar my-modules-local-tools nil
+(defvar my-modules-local-tools :keep
     "An alternative to the common case of replacing the first :tools list.
 Do not use this if replacing any :lang sections manually.")
 
@@ -59,10 +59,10 @@ Do not use this if replacing any :lang sections manually.")
            (file-exists-p (concat doom-user-dir "local/modules.el")))
   (load! (concat doom-user-dir "local/modules.el")))
 
-(when (and noninteractive my-modules-local-lang)
+(when (and noninteractive (not (eq my-modules-local-lang :keep)))
   (add-to-list 'my-modules-replace-list `(:lang . ,my-modules-local-lang))
   )
-(when (and noninteractive my-modules-local-tools)
+(when (and noninteractive (not (eq my-modules-local-tools :keep)))
   (add-to-list 'my-modules-replace-list `(:tools . ,my-modules-local-tools))
   )
 
