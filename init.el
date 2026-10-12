@@ -51,9 +51,13 @@ Do not use this if replacing any :lang sections manually.")
     "An alternative to the common case of replacing the first :tools list.
 Do not use this if replacing any :lang sections manually.")
 
+(when noninteractive
+  (load! "my-modules-lib.el" doom-user-dir)
+  )
+
 (when (and noninteractive
-           (file-exists-p (concat doom-user-dir "local/doom-modules.el")))
-  (load! (concat doom-user-dir "local/doom-modules.el")))
+           (file-exists-p (concat doom-user-dir "local/modules.el")))
+  (load! (concat doom-user-dir "local/modules.el")))
 
 (when (and noninteractive my-modules-local-lang)
   (add-to-list 'my-modules-replace-list `(:lang . ,my-modules-local-lang))
@@ -62,63 +66,14 @@ Do not use this if replacing any :lang sections manually.")
   (add-to-list 'my-modules-replace-list `(:tools . ,my-modules-local-tools))
   )
 
-(defun my-modules-replace (replace-list modules)
-  (let ((replace-alist (seq-map (lambda (x) (if (consp x) x (cons x nil))) replace-list)))
-    (my-modules-replace--rec replace-alist modules t nil)))
-
-(defun my-modules-replace--rec (replace-list modules top inclusions)
-  (require 'cl-lib)
-  (let* ((category-to-replace nil))
-    (seq-mapcat
-     (lambda (x)
-       (cond
-        ((and top (keywordp x))
-         (if-let* ((a (assoc x replace-list)))
-             (progn
-               (setq replace-list (cl-delete x replace-list :key #'car :count 1))
-               (if (eq (car (cdr a)) :keep)
-                   (progn
-                     (setq inclusions (cdr (cdr a)))
-                     (when inclusions (setq category-to-replace x))
-                     (list x)
-                     )
-                 (setq category-to-replace x)
-                 (cond
-                  ((keywordp (car (cdr a))) (cdr a))
-                  ((cdr a) (cons x (cdr a)))
-                  (t nil))))
-           (setq category-to-replace nil)
-           (setq inclusions nil)
-           (list x)))
-        ((and category-to-replace (not inclusions)) nil)
-        ((and (listp x) (keywordp (car x)))
-         (if (memq (car x) '(:if :when :unless))
-             (when-let* ((module (cdr (cdr x)))
-                         (r (my-modules-replace--rec replace-list module nil inclusions)))
-               (cons (car x) (cons (car (cdr x)) r)))
-           (list (my-modules-replace--rec replace-list x nil inclusions))))
-        ((and (listp x) category-to-replace)
-         (if (memq (car x) inclusions) (list x) nil))
-        ((listp x)
-         (if-let* ((a (assoc (car x) replace-list)))
-             (if (cdr a) (list (cdr a)) nil)
-           (list (my-modules-replace--rec replace-list x nil inclusions))))
-        (category-to-replace
-         (if (memq x inclusions) (list x) nil))
-        ((not (keywordp x))
-         (if-let* ((a (assoc x replace-list)))
-             (if (cdr a) (list (cdr a)) nil)
-           (list x)))
-        (t (list x))))
-     modules)))
-
 (defmacro my-doom! (doom)
   "This wrapper around doom! ensures that +lookup/documentation (:leader c k)
 continues to function despite using a dynamic list of modules."
-  (let ((module-spec (cdr doom)))
-    `(doom! (my-modules-replace my-modules-replace-list
-                                ,(list 'backquote module-spec)))
-    ))
+  (when noninteractive
+    (let ((module-spec (cdr doom)))
+      `(doom! (my-modules-replace my-modules-replace-list
+                                  ,(list 'backquote module-spec)))
+      )))
 
 (my-doom!
 (doom! :input
