@@ -263,7 +263,7 @@ continues to function despite using a dynamic list of modules."
        :lang
        emacs-lisp        ; drown in parentheses
        (org +dragndrop +pretty)               ; organize your plain life in plain text
-       (latex +cdlatex)
+       (latex +cdlatex)               ; writing papers in Emacs has never been so fun
 
        :email
        ;;(mu4e +org +gmail)
