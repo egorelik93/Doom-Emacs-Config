@@ -1226,6 +1226,8 @@ are served via wsl.localhost using `my/wsl-distro-name'."
                   (error nil))))
   )
 
+(load! "gnus.el")
+
 
 
 

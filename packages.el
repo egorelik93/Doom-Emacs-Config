@@ -92,6 +92,10 @@
   (package! tramp-rpc :recipe (:host github :repo "ArthurHeymans/emacs-tramp-rpc" :files ("lisp/*.el"))))
 
 
+;; Enable this where using email.
+(package! ebdb :disable t)
+
+
 
 
 ; Must be at end of file
