@@ -23,7 +23,7 @@
   "Take a (doom! modules) form, and extract modules as a list.
 
 This allow +lookup/documentation to continue working."
-    (list 'backquote (cdr doom-spec)))
+  (list 'backquote (cdr doom-spec)))
 
 (defconst my-enable-evil nil)
 (defconst my-enable-evil-everywhere nil)
@@ -277,6 +277,8 @@ continues to function despite using a dynamic list of modules."
        ;;irc               ; how neckbeards socialize
        ;;(rss +org)        ; emacs as an RSS reader
 
+       ,@(my-modules-get-replacement my-modules-local-doom t t)
+
        :config
        ;;literate
        ;(default +bindings +smartparens))
@@ -292,6 +294,8 @@ continues to function despite using a dynamic list of modules."
 
        :lang
        org-pretty          ; stop org fontifying markup inside code/verbatim
+
+       ,@(my-modules-get-replacement my-modules-local-user t t)
        ))
 
 
