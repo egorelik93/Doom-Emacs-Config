@@ -67,10 +67,11 @@ in-place, the old list reference does not remain valid."
 
 (when (boundp '+dashboard-menu-sections)
   (insert-into-list +dashboard-menu-sections 3
-                    '("Find org-roam node"
+                    `("Find org-roam node"
                       :icon (nerd-icons-icon-for-mode 'org-mode :face '+dashboard-menu-title)
                       :when (modulep! :lang org +roam)
                                         ;:face (:inherit (+dashboard-menu-title bold))
+                      :key ,(concat doom-leader-alt-key " " (key-description (where-is-internal #'org-roam-node-find doom-leader-map t)))
                       :action my-dashboard/org-roam-node-find)))
 
 (after! org-protocol
