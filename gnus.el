@@ -134,7 +134,7 @@
 )
 
 (use-package! ebdb
-  :hook gnus-before-startup
+  :after-call (gnus-before-startup-hook message-mode-hook)
   :config
 
   (require 'ebdb-gnus)
