@@ -49,6 +49,25 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
+
+; Must be at start of file
+;
+(when (file-exists-p (concat doom-user-dir "local/packages.el"))
+  (load! (concat doom-user-dir "local/packages.el")))
+
+
+;; Me: Packages can only be disabled once, and that invalidates
+;; any package! declarations otherwise.
+;; On the other hand, use-package! and after! break on any packages
+;; that are neither recognized nor disabled.
+;; My solution is to conditionally disable the package using this macro.
+;; Calls must be after any local package! declarations.
+(defmacro my-package-default-disable! (package)
+  `(package! ,package :disable (not (doom-package-get ',package))))
+
+
+
+
 (package! ligature
   :recipe (:host github :repo "mickeynp/ligature.el"))
 
@@ -93,12 +112,4 @@
 
 
 ;; Enable this where using email.
-(package! ebdb :disable t)
-
-
-
-
-; Must be at end of file
-;
-(when (file-exists-p (concat doom-user-dir "local/packages.el"))
-  (load! (concat doom-user-dir "local/packages.el")))
+(my-package-default-disable! ebdb)
