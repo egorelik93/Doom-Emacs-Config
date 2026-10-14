@@ -46,7 +46,7 @@
          (if (memq (car x) '(:if :when :unless))
              (when-let* ((module (cdr (cdr x)))
                          (r (my-modules-replace--rec replace-list module nil inclusions)))
-               (cons (car x) (cons (car (cdr x)) r)))
+               (list (cons (car x) (cons (car (cdr x)) r))))
            (list (my-modules-replace--rec replace-list x nil inclusions))))
         ((and (listp x) category-to-replace)
          (if (memq (car x) inclusions) (list x) nil))
