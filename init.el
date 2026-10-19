@@ -293,7 +293,7 @@ continues to function despite using a dynamic list of modules."
        (aas +laas)
 
        :lang
-       org-pretty          ; stop org fontifying markup inside code/verbatim
+       ;;org-pretty          ; stop org fontifying markup inside code/verbatim
 
        ,@(my-modules-get-replacement my-modules-local-user t t)
        ))
