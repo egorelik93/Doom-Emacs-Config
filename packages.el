@@ -111,5 +111,6 @@
   (package! tramp-rpc :recipe (:host github :repo "ArthurHeymans/emacs-tramp-rpc" :files ("lisp/*.el"))))
 
 
-;; Enable this where using email.
+;; Enable these where using email.
 (my-package-default-disable! ebdb)
+(my-package-disable-default! gnu-alias)
