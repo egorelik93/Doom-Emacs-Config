@@ -113,4 +113,4 @@
 
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)
-(my-package-disable-default! gnu-alias)
+(my-package-default-disable! gnu-alias)
