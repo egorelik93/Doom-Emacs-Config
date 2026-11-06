@@ -578,9 +578,39 @@ zero-width space is removed. The org backend is left untouched."
   )
 
 (use-package! org-latex-preview
+   :if (executable-find "latex")
   ;; Turn on `org-latex-preview-mode', it's built into Org and much faster/more
   ;; featured than org-fragtog. (Remember to turn off/uninstall org-fragtog.)
   :hook (org-mode . org-latex-preview-mode)
+  :after org
+  :init
+
+  ;; The function org-latex-preview is an autoload, so we can set the
+  ;; keybindings before loading the package.
+
+  (defun my/org-latex-preview-all (&optional arg)
+    (interactive "P")
+    (org-latex-preview (my/shift-prefix arg 2)))
+
+  ; Created by Claude
+  (defun my/shift-prefix (arg n)
+    "Shift raw prefix ARG up by N levels of C-u (each level = x4).
+Handles the common raw-prefix forms: nil, a cons like (4), or
+a plain integer (from C-u 3 etc.)."
+    (let ((base (cond
+                 ((null arg) 1)                 ; no prefix => treat as C-u^0
+                 ((consp arg) (car arg))         ; (4), (16), ...
+                 ((integerp arg) arg)            ; numeric arg, e.g. C-u 3
+                 (t 1))))
+      (list (* base (expt 4 n)))))
+
+  (map! :localleader :mode org-mode
+        (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
+        :prefix ("z" . "previews/misc")
+        :desc "Preview latex" "l" #'org-latex-preview
+        :desc "Preview all latex" "L" #'my/org-latex-preview-all
+        )
+
   :config
   ;; Increase preview width
   (plist-put org-latex-preview-appearance-options
@@ -617,28 +647,4 @@ zero-width space is removed. The org backend is left untouched."
 
   ;; More immediate live-previews -- the default delay is 1 second
   (setq org-latex-preview-mode-update-delay 0.25)
-
-
-  (defun my/org-latex-preview-all (&optional arg)
-    (interactive "P")
-    (org-latex-preview (my/shift-prefix arg 2)))
-
-  ; Created by Claude
-  (defun my/shift-prefix (arg n)
-    "Shift raw prefix ARG up by N levels of C-u (each level = x4).
-Handles the common raw-prefix forms: nil, a cons like (4), or
-a plain integer (from C-u 3 etc.)."
-    (let ((base (cond
-                 ((null arg) 1)                 ; no prefix => treat as C-u^0
-                 ((consp arg) (car arg))         ; (4), (16), ...
-                 ((integerp arg) arg)            ; numeric arg, e.g. C-u 3
-                 (t 1))))
-      (list (* base (expt 4 n)))))
-
-  (map! :localleader :mode org-mode
-        (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
-        :prefix ("z" . "previews/misc")
-        :desc "Preview latex" "l" #'org-latex-preview
-        :desc "Preview all latex" "L" #'my/org-latex-preview-all
-        )
   )
