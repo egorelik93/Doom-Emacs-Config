@@ -108,9 +108,6 @@ in-place, the old list reference does not remain valid."
 (add-hook 'org-mode-hook #'+org-pretty-mode)
 
 (after! org
-  (setq org-preview-latex-default-process 'dvisvgm)
-  (setq org-latex-create-formula-image-program 'dvisvgm)
-
   ; Taken from doom org module;
   ; since it uses evil-org-mode package,
   ; my redirect-evil-to-boon doesn't automatically apply.
@@ -155,33 +152,6 @@ Does not fire on single-letter words or on the argument of a \\command."
         :localleader
         "{" #'org-cdlatex-environment-indent
         )
-
-  (defun my/org-latex-preview-all (&optional arg)
-    (interactive "P")
-    (org-latex-preview (my/shift-prefix arg 2)))
-
-  ; Created by Claude
-  (defun my/shift-prefix (arg n)
-    "Shift raw prefix ARG up by N levels of C-u (each level = x4).
-Handles the common raw-prefix forms: nil, a cons like (4), or
-a plain integer (from C-u 3 etc.)."
-    (let ((base (cond
-                 ((null arg) 1)                 ; no prefix => treat as C-u^0
-                 ((consp arg) (car arg))         ; (4), (16), ...
-                 ((integerp arg) arg)            ; numeric arg, e.g. C-u 3
-                 (t 1))))
-      (list (* base (expt 4 n)))))
-
-  (map! :localleader :mode org-mode
-        (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
-        :prefix ("z" . "previews/misc")
-        :desc "Preview latex" "l" #'org-latex-preview
-        :desc "Preview all latex" "L" #'my/org-latex-preview-all
-        )
-  ; Not sure if this is true for all machines,
-  ; but in the environments I have tried this on, the scale is too big.
-  (setq org-format-latex-options
-        (plist-put org-format-latex-options :scale 0.5))
 
   ;; Not sure I'd ever actually use this. But it makes me feel better
   ;; about using raw zwsp as an escape character to be stripped out.
@@ -437,9 +407,6 @@ tasks."
     )
   )
 
-(use-package! org-fragtog
-  :hook (org-mode-hook . org-fragtog-mode))
-
 ; Move this to V, to make room for vulpea
 (map! :leader :prefix "n" :desc "View search" "V" #'org-search-view)
 
@@ -608,4 +575,70 @@ zero-width space is removed. The org backend is left untouched."
         (replace-regexp-in-string my-org-zwsp-placeholder "\u200B" text))))
 
   (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
+  )
+
+(use-package! org-latex-preview
+  ;; Turn on `org-latex-preview-mode', it's built into Org and much faster/more
+  ;; featured than org-fragtog. (Remember to turn off/uninstall org-fragtog.)
+  :hook (org-mode . org-latex-preview-mode)
+  :config
+  ;; Increase preview width
+  (plist-put org-latex-preview-appearance-options
+             :page-width nil)
+  ; Not sure if this is true for all machines,
+  ; but in the environments I have tried this on, the scale is too big.
+  ; It no longer seems to have effect on those machines, but leaving the preference.
+  (plist-put org-latex-preview-appearance-options
+             :scale 0.5)
+  ; zoom, on the other hand, seems too small.
+  (plist-put org-latex-preview-appearance-options
+             :zoom 1.25)
+  ; While transparent seems better, I have seen it cause some diagrams to
+  ; inexplicably have a black foreground, which is hard to read.
+  (plist-put org-latex-preview-appearance-options
+             :background 'auto)
+
+  ;; ;; Use dvisvgm to generate previews
+  ;; ;; You don't need this, it's the default:
+  (setq org-latex-preview-process-default 'dvisvgm)
+
+  ;; ;; Block C-n, C-p etc from opening up previews when using `org-latex-preview-mode'
+  ;; (setq org-latex-preview-mode-ignored-commands
+  ;;       '(next-line previous-line mwheel-scroll
+  ;;         scroll-up-command scroll-down-command))
+
+  ;; ;; Enable consistent equation numbering
+  ;; (setq org-latex-preview-numbered t)
+
+  ;; Bonus: Turn on live previews.  This shows you a live preview of a LaTeX
+  ;; fragment and updates the preview in real-time as you edit it.
+  ;; To preview only environments, set it to '(block edit-special) instead
+  (setq org-latex-preview-mode-display-live t)
+
+  ;; More immediate live-previews -- the default delay is 1 second
+  (setq org-latex-preview-mode-update-delay 0.25)
+
+
+  (defun my/org-latex-preview-all (&optional arg)
+    (interactive "P")
+    (org-latex-preview (my/shift-prefix arg 2)))
+
+  ; Created by Claude
+  (defun my/shift-prefix (arg n)
+    "Shift raw prefix ARG up by N levels of C-u (each level = x4).
+Handles the common raw-prefix forms: nil, a cons like (4), or
+a plain integer (from C-u 3 etc.)."
+    (let ((base (cond
+                 ((null arg) 1)                 ; no prefix => treat as C-u^0
+                 ((consp arg) (car arg))         ; (4), (16), ...
+                 ((integerp arg) arg)            ; numeric arg, e.g. C-u 3
+                 (t 1))))
+      (list (* base (expt 4 n)))))
+
+  (map! :localleader :mode org-mode
+        (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
+        :prefix ("z" . "previews/misc")
+        :desc "Preview latex" "l" #'org-latex-preview
+        :desc "Preview all latex" "L" #'my/org-latex-preview-all
+        )
   )

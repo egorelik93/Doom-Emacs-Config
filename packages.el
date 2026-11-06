@@ -104,8 +104,6 @@
 (package! claude-code-ide
   :recipe (:host github :repo "manzaltu/claude-code-ide.el"))
 
-(package! org-fragtog)
-
 (unless (featurep :system 'windows)
   (package! msgpack)
   (package! tramp-rpc :recipe (:host github :repo "ArthurHeymans/emacs-tramp-rpc" :files ("lisp/*.el"))))
@@ -114,3 +112,7 @@
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)
 (my-package-default-disable! gnu-alias)
+
+;; Remove this once org is released and updated
+;; Don't pin org to the version bundled with Doom.
+(unpin! org)
