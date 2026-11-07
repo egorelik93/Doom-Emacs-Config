@@ -48,18 +48,6 @@ you're done. This can be called from an external script on Windows."
 ;(add-hook! org-capture-mode-hook (lambda (_) (doom/reload-font)))
 
 
-(defun insert-into-list (list n el)
-  "Insert into list LIST an element EL at index N.
-
-If N is 0, EL is inserted before the first element.
-
-The resulting list is returned.  As the list contents is mutated
-in-place, the old list reference does not remain valid."
-  (let* ((padded-list (cons nil list))
-         (c (nthcdr n padded-list)))
-    (setcdr c (cons el (cdr c)))
-    (cdr padded-list)))
-
 (defun my-dashboard/org-roam-node-find (&optional arg)
   "Wrapper around org-roam-node-find compatible with doom dashboard"
   (interactive "P")
@@ -591,18 +579,6 @@ zero-width space is removed. The org backend is left untouched."
   (defun my/org-latex-preview-all (&optional arg)
     (interactive "P")
     (org-latex-preview (my/shift-prefix arg 2)))
-
-  ; Created by Claude
-  (defun my/shift-prefix (arg n)
-    "Shift raw prefix ARG up by N levels of C-u (each level = x4).
-Handles the common raw-prefix forms: nil, a cons like (4), or
-a plain integer (from C-u 3 etc.)."
-    (let ((base (cond
-                 ((null arg) 1)                 ; no prefix => treat as C-u^0
-                 ((consp arg) (car arg))         ; (4), (16), ...
-                 ((integerp arg) arg)            ; numeric arg, e.g. C-u 3
-                 (t 1))))
-      (list (* base (expt 4 n)))))
 
   (map! :localleader :mode org-mode
         (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
