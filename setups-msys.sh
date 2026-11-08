@@ -326,4 +326,13 @@ pacman -Sdd --needed --noconfirm "${PKG_PREFIX}-fswatch"
 
 
 echo ""
+
+# Set up man
+#
+# Strangely required for native compilation of default-keybindings
+echo "Installing man"
+pacman -S --needed --noconfirm man-db --assume-installed "gcc-libs=$(available_version_full)"
+
+
+echo ""
 echo "==> Done."

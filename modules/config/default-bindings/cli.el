@@ -34,6 +34,9 @@
     (with-temp-file output
       ;;; no-evil-bindings.el -*- lexical-binding: t; -*-
       (insert (format! ";;; %s -*- lexical-binding: t; -*-\n" output))
+      (insert "(eval-when-compile ")
+      (prin1 my-native-comp-async-env-modifier-form (current-buffer))
+      (insert ")")
       (dolist (form forms)
         (let ();((expanded (macroexpand-all form)))
           (prin1 form (current-buffer))
@@ -44,5 +47,7 @@
   (add-hook! 'doom-after-sync-hook
     (my-compile-doomdir-elisp "no-evil-windows.el" (dir!))
     (print! "> Combining keybindings ...")
-    (apply #'my/combine-and-expand (expand-file-name "all-bindings.el" (dir!)) (my-keybindings-files)))
+    (apply #'my/combine-and-expand (expand-file-name "all-bindings.el" (dir!)) (my-keybindings-files))
+    (when (not (bound-and-true-p my-log-evil-keybinds))
+      (my-compile-doomdir-elisp "all-bindings.el" (dir!))))
   )

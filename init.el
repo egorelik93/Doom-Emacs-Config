@@ -52,12 +52,12 @@ Do not use this if replacing any :lang sections manually.")
 Do not use this if replacing any :lang sections manually.")
 
 (when noninteractive
-  (load! "my-modules-lib.el" doom-user-dir)
+  (load! "my-modules-lib" doom-user-dir)
   )
 
 (when (and noninteractive
            (file-exists-p (concat doom-user-dir "local/modules.el")))
-  (load! (concat doom-user-dir "local/modules.el")))
+  (load! "modules" (concat doom-user-dir "local")))
 
 (when (and noninteractive (not (eq my-modules-local-lang :keep)))
   (add-to-list 'my-modules-replace-list `(:lang . ,my-modules-local-lang))
@@ -303,6 +303,18 @@ continues to function despite using a dynamic list of modules."
   (setq message-log-max (* message-log-max 10))
   )
 
+;; Set native-comp-async-env-modifier-form to this in scopes
+;; we want to async compile doom-dependent files.
+(setq my-native-comp-async-env-modifier-form `(progn
+  (require 'doom)
+  (require 'doom-modules)
+  (let ((dir (doom-module-locate-path '(:doom . compat))))
+    (load! "+use-package" dir)
+    (load! "+keybinds" dir))
+  (defvar doom-disabled-packages ',doom-disabled-packages)
+  (load! "redirect-evil-to-boon" ,doom-user-dir)
+  ))
+
 (defun my-compile-doomdir-elisp (file &optional dir)
   (interactive "f")
   (print! "> Compiling %s ..." file)
@@ -313,7 +325,15 @@ continues to function despite using a dynamic list of modules."
         (print! "  - Compilation failed: %s" (buffer-string))))
     (when (get-buffer "*Compile-Log*")
       (kill-buffer "*Compile-Log*"))
-    ))
+    )
+  (when (native-comp-available-p)
+    (let ((result (native-compile (expand-file-name file (or dir doom-user-dir)))))
+      (unless result
+        (with-current-buffer "*Native-compile-log*"
+          (print! "  - Native Compilation failed: %s" (buffer-string))))
+      (when (get-buffer "*Native-compile-log*")
+        (kill-buffer "*Native-compile-log*"))
+      )))
 
 (when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
   (add-hook! 'doom-before-sync-hook
@@ -322,7 +342,7 @@ continues to function despite using a dynamic list of modules."
   (add-hook
    'doom-before-modules-init-hook
    (defun my-redirect-evil-maps ()
-     (load! "redirect-evil-to-boon.elc" doom-user-dir)
+     (load! "redirect-evil-to-boon" doom-user-dir)
      )))
 
 
@@ -331,4 +351,4 @@ continues to function despite using a dynamic list of modules."
 ; Must be at end of file
 ;
 (when (file-exists-p (concat doom-user-dir "local/init.el"))
-  (load! (concat doom-user-dir "local/init.el")))
+  (load! "init" (concat doom-user-dir "local")))

@@ -155,7 +155,7 @@ pass (list nil) instead to indicate a nil `cursor-type'
 (setq doom-theme 'catppuccin)
 
 
-(load! "themes.el")
+(load! "themes")
 
 
 ;; If you use `org' and don't want your org files in the default location below,
@@ -357,7 +357,7 @@ mapping will always be the ESC prefix map."
     (speedrect-mode))
 
 
-(load! "modal.el")
+(load! "modal")
 
 
 (after! undo-tree
@@ -784,9 +784,9 @@ mapping will always be the ESC prefix map."
   (remove-hook 'doom-init-ui-hook #'+dashboard-init-h)
 )
 
-(load! "ediff-layout.el")
+(load! "ediff-layout")
 
-(load! "lang.el")
+(load! "lang")
 
 (setq which-key-show-transient-maps t)
 
@@ -1226,7 +1226,7 @@ are served via wsl.localhost using `my/wsl-distro-name'."
                   (error nil))))
   )
 
-(load! "gnus.el")
+(load! "gnus")
 
 
 
@@ -1234,6 +1234,6 @@ are served via wsl.localhost using `my/wsl-distro-name'."
 ; Must be at end of file
 ;
 (when (file-exists-p "~/.doom.d/config.local.el")
-  (load-file "~/.doom.d/config.local.el"))
+  (load! "config.local" doom-user-dir))
 (when (file-exists-p (concat doom-user-dir "local/config.el"))
-  (load! (concat doom-user-dir "local/config.el")))
+  (load! "config" (concat doom-user-dir "local")))

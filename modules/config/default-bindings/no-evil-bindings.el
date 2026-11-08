@@ -2,7 +2,7 @@
 
 ; Modified from config/default/+evil-bindings.el.
 
-(load! "no-evil-windows.elc")
+(load! "no-evil-windows")
 
 ;;
 ;;; Global keybindings

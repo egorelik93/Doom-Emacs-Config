@@ -14,11 +14,17 @@
     ;(load! "evil-bindings-overrides")
 
     ; Set the contributing files in init.el; doom sync will generate this file.
-    (let ((byte-compile-warnings nil)
-          (byte-compile-verbose nil))
-      (byte-recompile-file (expand-file-name "all-bindings.el" (dir!)) nil 0))
-    ;(my-compile-doomdir-elisp "all-bindings.el")
-    (load! "all-bindings.elc")
+    (if my-log-evil-keybinds
+        (load! "all-bindings.el" (dir!))
+      (let* ((byte-compile-warnings nil)
+             (byte-compile-verbose nil)
+             (result (byte-recompile-file (expand-file-name "all-bindings.el" (dir!)) nil 0))
+             )
+        (when (and (eq result t) (native-comp-available-p))
+          (native-compile (expand-file-name "all-bindings.el" (dir!)))
+          )
+        )
+      (load! "all-bindings" (dir!)))
 
     ; Need to set this or else persp will override C-c w
     (setopt persp-keymap-prefix (kbd "C-c W"))

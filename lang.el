@@ -206,4 +206,4 @@ Does not fire on single-letter words or on the argument of a \\command."
 
 ; Org
 
-(load! "org.el")
+(load! "org" doom-user-dir)
