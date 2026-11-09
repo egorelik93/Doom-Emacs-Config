@@ -1,35 +1,36 @@
 ;;; themes.el -*- lexical-binding: t; -*-
 
 (defvar theme-configuration-do-not-recurse nil)
-(defun setup-theme-configuration (applicable-theme when configure)
-  (let* (
-         (applicable-theme-p
-          (if
-              (functionp applicable-theme)
-              applicable-theme
-            (lambda (loading-theme)
-              (eq loading-theme applicable-theme)
-                )))
-          (configure-advice
-           (lambda (loading-theme &rest args)
-             "Configure theme"
-             (let ((do-not-recurse theme-configuration-do-not-recurse))
-               (setq theme-configuration-do-not-recurse t)
-               (when (and
-                      (not do-not-recurse)
-                      (funcall applicable-theme-p loading-theme)
-                      (not (member :no-enable args)))
-                 (funcall configure loading-theme))
-               (setq theme-configuration-do-not-recurse nil))
-             )))
-    (advice-add #'load-theme when configure-advice)
-    (advice-add #'consult-theme when configure-advice)
+(defmacro setup-theme-configuration (applicable-theme when &rest configure)
+  (let* ((applicable-theme-p
+          (lambda (loading-theme)
+            (if (and (listp applicable-theme) (eq (car applicable-theme) 'quote))
+                `(eq ,loading-theme ,applicable-theme)
+              `(let ((applicable-theme ,applicable-theme))
+                 (if (functionp applicable-theme)
+                     (funcall applicable-theme ,loading-theme)
+                   (eq ,loading-theme applicable-theme)))))))
+    `(let* ((configure-advice
+             (lambda (loading-theme &rest args)
+               "Configure theme"
+               (let ((do-not-recurse theme-configuration-do-not-recurse))
+                 (setq theme-configuration-do-not-recurse t)
+                 (when (and
+                        (not do-not-recurse)
+                        ,(funcall applicable-theme-p 'loading-theme)
+                        (not (member :no-enable args)))
+                   ,@configure)
+                 (setq theme-configuration-do-not-recurse nil))
+               )))
+       (advice-add #'load-theme ,when configure-advice)
+       (advice-add #'consult-theme ,when configure-advice)
 
-    (when (funcall applicable-theme-p doom-theme)
-      (funcall configure-advice doom-theme))
-  ))
+       (when ,(funcall applicable-theme-p 'doom-theme)
+         (funcall configure-advice doom-theme))
+       )))
 
 (use-package! catppuccin-theme
+  :defer t
   :init
   ; Inside Windows CLIs, Catpuccin's 256-color quantization
   ; gets mapped by emacs to something completely unusable.
@@ -159,15 +160,15 @@
   (setup-theme-configuration
    'catppuccin
    :after
-   (lambda (_)
-     (when (not (eq (catppuccin-color 'base 'macchiato) my-catppuccin-base-color))
-       (my-configure-catppuccin)
-       (catppuccin-reload)
-       ))
+   (when (not (eq (catppuccin-color 'base 'macchiato) my-catppuccin-base-color))
+     (my-configure-catppuccin)
+     (catppuccin-reload)
+     )
    )
   )
 
 (use-package! ef-themes
+  :defer t
   :init
   ;(ef-themes-take-over-modus-themes-mode 1)
   (modus-themes-include-derivatives-mode 1)
