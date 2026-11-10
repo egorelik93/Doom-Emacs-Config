@@ -34,6 +34,7 @@
                                 (defer nil)
                                 (init nil)
                                 (setup nil)
+                                (config nil)
                                 (first-load nil)
                                 (every-load nil)
                                 (first-enable nil)
@@ -60,7 +61,7 @@ For other themes, this is usable but consider the ordinary use-package.
                 We suggest enabling this, or possibly conditioning it on
                 whether the theme is unused if appropriate.
                 Doom Emacs startup behavior seems to be that if the theme is already loaded,
-                it will just enable it. Combined with :defer t, that can created
+                it will just enable it. Combined with :defer t, that can create
                 slight differences in load behavior and timing.
 :init           A list of sexps.
                 Same behavior as use-package.
@@ -68,12 +69,18 @@ For other themes, this is usable but consider the ordinary use-package.
                 Run once earliest of any :first-load and :first-enable, depending on what is given.
                 Theme permitting, we recommend doing typical package config here.
                 Setup that has effects on the rest of emacs, e.g. defuns and hooks, should definitely go here.
-:first-load     A list of of sexps.
+:config         A list of sexps.
+                A synonym for :first-load, to match the look of use-package.
+                For clarity of behavior, we recommend using :first-load instead for themes
+                not designed for use with use-package.
+                Do not use both.
+:first-load     A list of sexps.
                 As the name suggests, runs only the first time the package is loaded,
                 which is usually the expected and desired behavior of :config.
                 As with use-package, if not :defer this runs immediately,
                 so this is a good location when that is desirable.
-                Superceded by :setup if one does not strictly need the :first-load timing.
+                If a package explicitly says to use :config, that goes here (possibly use the :config synonym).
+                Otherwise superceded by :setup if one does not strictly need the :first-load timing.
 :every-load     A list of sexps.
                 Runs every time the package is loaded.
                 Unless running at enable-time is insufficient, we recommend not using this.
@@ -96,6 +103,8 @@ For other themes, this is usable but consider the ordinary use-package.
   (when preface
     (eval (macroexp-progn preface))
     )
+  (when config
+    (setq first-load config))
   (let* ((themes (cond
                   ((symbolp theme) (list theme))
                   ((and (listp theme) (eq (car theme) 'quote)) (ensure-list (cadr theme)))
@@ -330,39 +339,40 @@ For other themes, this is usable but consider the ordinary use-package.
 (use-theme-package! ef-themes
   :defer (not (my-modus-theme-p doom-theme))
   :theme #'my-modus-theme-p
-  :preface (
-  (defun my-modus-theme-p (theme)
-    (or
-     (string-prefix-p "ef-" (symbol-name theme))
-     (string-prefix-p "modus-" (symbol-name theme))))
-  )
-  :first-load
+  :preface
   (
-   ;(ef-themes-take-over-modus-themes-mode 1)
+   (defun my-modus-theme-p (theme)
+     (or
+      (string-prefix-p "ef-" (symbol-name theme))
+      (string-prefix-p "modus-" (symbol-name theme))))
+  )
+  :config
+  (
+   ;;(ef-themes-take-over-modus-themes-mode 1)
    (modus-themes-include-derivatives-mode 1)
    )
   :setup
   (
-  ;; solaire-mode
-  (defun my-ef-themes-solaire-faces (loading-theme)
-    ; For whatever reason, loading-theme is not directly available inside modus-themes-with-colors
-    (eval
-     `(modus-themes-with-colors
-        (custom-theme-set-faces!
-          ',loading-theme
-          `(solaire-default-face :inherit default :background ,bg-dim :foreground ,fg-dim)
-          `(solaire-fringe-face :inherit solaire-default-face :foreground ,fg-dim)
-          `(solaire-line-number-face :inherit solaire-default-face :foreground ,fg-dim)
-          `(solaire-mode-line-face :foreground ,fg-dim :background ,bg-mode-line-active)
-          `(solaire-mode-line-inactive-face :inverse-video nil
-            :background ,bg-mode-line-active
-            :foreground ,fg-prose-verbatim)
-          `(solaire-header-line-face :inherit 'solaire-mode-line-face)
-          `(solaire-hl-line-face :background ,bg-active)
-          `(solaire-org-hide-face :background ,bg-dim :foreground ,bg-dim))))
+   ;; solaire-mode
+   (defun my-ef-themes-solaire-faces (loading-theme)
+     ;; For whatever reason, loading-theme is not directly available inside modus-themes-with-colors
+     (eval
+      `(modus-themes-with-colors
+         (custom-theme-set-faces!
+           ',loading-theme
+           `(solaire-default-face :inherit default :background ,bg-dim :foreground ,fg-dim)
+           `(solaire-fringe-face :inherit solaire-default-face :foreground ,fg-dim)
+           `(solaire-line-number-face :inherit solaire-default-face :foreground ,fg-dim)
+           `(solaire-mode-line-face :foreground ,fg-dim :background ,bg-mode-line-active)
+           `(solaire-mode-line-inactive-face :inverse-video nil
+             :background ,bg-mode-line-active
+             :foreground ,fg-prose-verbatim)
+           `(solaire-header-line-face :inherit 'solaire-mode-line-face)
+           `(solaire-hl-line-face :background ,bg-active)
+           `(solaire-org-hide-face :background ,bg-dim :foreground ,bg-dim))))
 
-    ; solaire-mode checks this, so necessary to provide manually
-    (put loading-theme 'theme-feature t)
+     ;; solaire-mode checks this, so necessary to provide manually
+     (put loading-theme 'theme-feature t)
     )
   )
   :every-enable
