@@ -7,3 +7,4 @@ local/
 *.elc
 all-bindings.el
 upstream-hash.eld
+.user-lisp-autoloads.el

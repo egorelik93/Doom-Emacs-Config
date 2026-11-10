@@ -74,6 +74,9 @@ are open."
 (setq doom-scratch-initial-major-mode 'lisp-interaction-mode)
 
 
+(add-load-path! "user-lisp")
+
+
 ; Compenstates for cursor functionality assumed in this file
 (unless (modulep! :editor evil)
   ; Copied from evil-core.el
