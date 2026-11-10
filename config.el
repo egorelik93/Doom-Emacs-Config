@@ -84,10 +84,19 @@ are open."
       ;; `set-cursor-color' forces a redisplay, so only
       ;; call it when the color actually changes
       (set-cursor-color color)))
-  (defun +evil-update-cursor-color-h ()
+
+  ; Copied from doom evil module
+
+  ;; We want to update the colors after a new theme has been enabled, but this
+  ;; is tricky: whenever a cursor color is applied, Emacs will automatically
+  ;; change the 'cursor face accordingly to keep it in sync. As a result, we
+  ;; read and store the new theme colors as early as possible, and in particular
+  ;; before evil performs its next cursor refresh.
+  (add-hook! '(doom-load-theme-hook doom-after-modules-config-hook) :depth -100
+    (defun +evil-update-cursor-color-h ()
       ;; Use a flashy color for emacs state.
       (put 'cursor 'evil-emacs-color  (face-foreground 'warning))
-      (put 'cursor 'evil-normal-color (face-background 'cursor)))
+      (put 'cursor 'evil-normal-color (face-background 'cursor))))
   (defun +evil-default-cursor-fn ()
     (evil-set-cursor-color (get 'cursor 'evil-normal-color)))
   (defun +evil-emacs-cursor-fn ()
