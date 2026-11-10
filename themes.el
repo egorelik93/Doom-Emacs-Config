@@ -28,17 +28,17 @@
     `(use-theme-package ,package ,@args)))
 
 (cl-defmacro use-theme-package (package
-                                 &key
-                                 (theme nil)
-                                 (theme-fn nil)
-                                 (preface nil)
-                                 (defer nil)
-                                 (init nil)
-                                 (first-config nil)
-                                 (every-config nil)
-                                 (first-enable nil)
-                                 (every-enable nil)
-                                 (every-disable nil))
+                                &key
+                                (theme nil)
+                                (preface nil)
+                                (defer nil)
+                                (init nil)
+                                (setup nil)
+                                (first-load nil)
+                                (every-load nil)
+                                (first-enable nil)
+                                (every-enable nil)
+                                (every-disable nil))
   "Single-file themes and use-package :defer do not play as expected together;
 because themes are loaded, not required, and use-package defers using eval-after-load,
 :config will get evaluated on every load, but only when deferred.
@@ -48,13 +48,12 @@ use a single file or feature for both theme and underlying machinery,
 leaving us no distinct :config to use.
 For other themes, this is usable but consider the ordinary use-package.
 
-:preface        Evaluated at expansion time.
+:preface        A list of sexps.
+                Evaluated at expansion time.
                 Can be used to define functions for use by :defer.
-:theme          Either a theme name, quoted list of theme names, or an sexp.
+:theme          Either a theme name, quoted list of theme names, quoted function, or an sexp.
                 Must be provided if the theme name differs from package.
                 If an sexp, it is interpreted as a test of the provided variable \"theme\".
-:theme-fn       A function.
-                An alternative to specifying :theme.
 :defer          Any boolean expression.
                 Unlike use-package, the expression will be evaluated before getting passed
                 to use-package.
@@ -65,16 +64,24 @@ For other themes, this is usable but consider the ordinary use-package.
                 slight differences in load behavior and timing.
 :init           A list of sexps.
                 Same behavior as use-package.
-:first-config   A list of of sexps.
+:setup          A list of sexps.
+                Run once earliest of any :first-load and :first-enable, depending on what is given.
+                Theme permitting, we recommend doing typical package config here.
+                Setup that has effects on the rest of emacs, e.g. defuns and hooks, should definitely go here.
+:first-load     A list of of sexps.
                 As the name suggests, runs only the first time the package is loaded,
                 which is usually the expected and desired behavior of :config.
-                Theme permitting, we recommend doing typical package config here.
-:every-config   A list of sexps.
+                As with use-package, if not :defer this runs immediately,
+                so this is a good location when that is desirable.
+                Superceded by :setup if one does not strictly need the :first-load timing.
+:every-load     A list of sexps.
                 Runs every time the package is loaded.
                 Unless running at enable-time is insufficient, we recommend not using this.
 :first-enable   A list of sexps.
                 Runs only the first time the theme is enabled.
-                May be a reasonable alternative to first-config if that is too early.
+                May be a reasonable alternative to config if that is too early;
+                from a use-package perspective it is always \"deferred\", and is a good location
+                where that is desirable.
                 Note that it is run only once per package, even if multiple themes are provided.
                 The variable \"theme\" is available to determine which is being enabled.
 :every-enable   A list of sexps.
@@ -83,78 +90,93 @@ For other themes, this is usable but consider the ordinary use-package.
                 The variable \"theme\" is available to determine which is being enabled.
 :every-disable  A list of sexps.
                 Runs every time the theme is disabled.
-                The variable \"theme\" is available to determine which is being enabled."
+                The variable \"theme\" is available to determine which is being enabled.
+"
   (declare (indent 1))
   (when preface
-    (eval preface)
+    (eval (macroexp-progn preface))
     )
   (let* ((themes (cond
                   ((symbolp theme) (list theme))
                   ((and (listp theme) (eq (car theme) 'quote)) (ensure-list (cadr theme)))
-                  (theme-fn nil)
+                  ((and (listp theme) (eq (car theme) 'function)) nil)
+                  ((listp theme) nil)
                   (t package)))
          (theme-test (cond
-                      (theme-fn `(funcall ,theme-fn theme))
+                      ((and (listp theme) (eq (car theme) 'function)) `(funcall ,theme theme))
                       (themes nil)
                       (t theme)))
          (defer (when defer (eval defer)))
-         (theme-enabled-sym (when first-enable (intern (concat "use-theme--" (symbol-name package) "--enabled"))))
-         (package-configured-sym (when first-config (intern (concat "use-theme--" (symbol-name package) "--configured")))))
+         (setup-in-load (or (not defer) first-load every-load))
+         configure-hooks theme-enabled-sym package-configured-sym
+         )
+    (if setup-in-load
+        (setq first-load (append setup first-load))
+      (setq first-enable (append setup first-enable)))
+    (setq theme-enabled-sym (when first-enable (intern (concat "use-theme--" (symbol-name package) "--enabled"))))
+    (setq package-configured-sym (when first-load (intern (concat "use-theme--" (symbol-name package) "--configured"))))
+    (setq configure-hooks `(
+                            ,@(when (or first-enable every-enable)
+                                (let ((enable-h
+                                       (append
+                                        (when first-enable
+                                          `((unless ,theme-enabled-sym
+                                              (setq ,theme-enabled-sym t)
+                                              ,@first-enable
+                                              ))
+                                          )
+                                        every-enable
+                                        )))
+                                  (if theme-test
+                                      `((add-hook 'enable-theme-functions
+                                         (defun ,(intern (concat "use-theme--" (symbol-name package) "--enable-h")) (theme)
+                                           ,@enable-h
+                                           )
+                                         -50))
+                                    (mapcar
+                                     (lambda (theme)
+                                       `(use-theme-eval-after-enable ',theme (let ((theme ',theme)) ,@enable-h)))
+                                     themes))))
+                            ,@(when every-disable
+                                (if theme-test
+                                    `((add-hook 'disable-theme-functions
+                                       (lambda (theme) @,every-disable)
+                                       -50))
+                                  (mapcar
+                                   (lambda (theme)
+                                     `(use-theme-eval-after-disable ',theme (let ((theme ',theme)) ,@every-disable)))
+                                   themes)))
+                            ))
+    (if setup-in-load
+        (setq first-load (append first-load configure-hooks))
+      (setq init (append init configure-hooks)))
+
     `(use-package ,package
        ,@(when defer `(:defer ,defer))
-       ,@(when (or init first-config first-enable every-enable every-disable)
+       ,@(when (or init first-load first-enable)
            (remq
             nil
             `(:init
-              ,@init
+              ,(when (and first-load defer) `(setq ,package-configured-sym nil))
               ,(when first-enable `(setq ,theme-enabled-sym nil))
-              ,(when first-config `(setq ,package-configured-sym nil))
-              ,(when (or first-enable every-enable)
-                 (let ((enable-h
-                        (append
-                         (when first-enable
-                           `((unless ,theme-enabled-sym
-                               (setq ,theme-enabled-sym t)
-                               ,@first-enable
-                               ))
-                           )
-                         every-enable
-                         )))
-                   (if theme-test
-                       `(add-hook 'enable-theme-functions
-                         (defun ,(intern (concat "use-theme--" (symbol-name package) "--enable-h")) (theme)
-                           ,@enable-h
-                           )
-                         -50)
-                     (mapcan
-                      (lambda (theme)
-                        `(use-theme-eval-after-enable ',theme (let ((theme ',theme)) ,@enable-h)))
-                      themes))))
-              ,(when every-disable
-                 (if theme-test
-                     `(add-hook 'disable-theme-functions
-                       (lambda (theme) @,every-disable)
-                       -50)
-                   (mapcan
-                    (lambda (theme)
-                      `(use-theme-eval-after-disable ',theme (let ((theme ',theme))) ,@every-disable)))))
+              ,@init
               )))
-       ,@(when (or first-config every-config)
+       ,@(when (or first-load every-load)
            (remq
             nil
             (if defer
                 `(:config
-                  ,(when first-config
+                  ,(when first-load
                      `(unless ,package-configured-sym
                         (setq ,package-configured-sym t)
-                        ,@first-config
+                        ,@first-load
                         ))
-                  ,@every-config)
+                  ,@every-load)
               `(:config
-                ,@first-config
-                ,@every-config
-                ,(when every-config
-                   `(eval-after-load ,package ,every-config)
+                ,@first-load
+                ,@every-load
+                ,(when every-load
+                   `(eval-after-load ,package ,every-load)
                    )
                 ))))
        )))
@@ -162,18 +184,26 @@ For other themes, this is usable but consider the ordinary use-package.
 (use-theme-package! catppuccin-theme
   :theme catppuccin
   :defer t
-  :first-enable
+  :init
   (
-   ; Inside Windows CLIs, Catpuccin's 256-color quantization
-   ; gets mapped by emacs to something completely unusable.
-   ; We thus map it to 16 colors ourselves.
-   ;
-   ; Important requirements:
-   ; - Default text color must be "white".
-   ; - Background should be "black" (treated by Windows Terminal as transparent).
-   ; - Highlights are used by vertico and must be visible without being unreadable.
-   ; - If Highlights of the current line are visible (which they have to be because of prev point),
-   ;   then it should ideally be the same color as region selection.
+   (setq catppuccin-flavor 'macchiato)
+   )
+  :setup
+  (
+   ;; This must run before the most recent catppuccin reload.
+   ;; If we need to reload anyway, can put this in :setup,
+   ;; but otherwise must be in :init.
+
+   ;; Inside Windows CLIs, Catpuccin's 256-color quantization
+   ;; gets mapped by emacs to something completely unusable.
+   ;; We thus map it to 16 colors ourselves.
+   ;;
+   ;; Important requirements:
+   ;; - Default text color must be "white".
+   ;; - Background should be "black" (treated by Windows Terminal as transparent).
+   ;; - Highlights are used by vertico and must be visible without being unreadable.
+   ;; - If Highlights of the current line are visible (which they have to be because of prev point),
+   ;;   then it should ideally be the same color as region selection.
    (when (featurep :system 'windows)
      ; Created by Claude
      (defun my-catppuccin-quantize-to-16 (color)
@@ -239,11 +269,6 @@ For other themes, this is usable but consider the ordinary use-package.
      (advice-add 'catppuccin-quantize-color :filter-return #'my-catppuccin-quantize-to-16)
      )
 
-  ; I discovered when trying to remove default +bindings,
-  ; theme loading now breaks without this.
-  (require 'ring)
-
-  (setq catppuccin-flavor 'macchiato)
 
   (defun set-catppuccin-flavor-and-reload (flavor)
     (interactive "MOne of latte, frappe, macchiato, or mocha: ")
@@ -252,94 +277,97 @@ For other themes, this is usable but consider the ordinary use-package.
     (my-configure-catppuccin)
     (catppuccin-reload))
 
-  ;; Requires catppuccin to already be loaded
-  (defun my-configure-catppuccin ()
-    (setq my-catppuccin-base-color "#272b38")
-
-    ;(catppuccin-set-color 'base "#282c34" 'macchiato) ; doom-one background
-    ;(catppuccin-set-color 'base "#262938" 'macchiato) ; a bit less intense than macchiato
-    ;(catppuccin-set-color 'base "#272b38" 'macchiato) ; a little less purple, more grey than the above
-    ;(catppuccin-set-color 'base "#282c3a" 'macchiato) ; should be less than the above, but I can't tell.
-
-    (catppuccin-set-color 'base my-catppuccin-base-color 'macchiato))
-  (my-configure-catppuccin)
-
-  (defun my-customize-catppuccin-faces ()
-    (let ((macchiato-red "#ed8796")
-          (macchiato-pink "#f5bde6")
-          (macchiato-yellow "#eed49f")
-          (macchiato-sky "#91d7e3"))
-      (custom-theme-set-faces! 'catppuccin
-        `(show-paren-match :foreground "#ee82ee" :weight bold)
-        ;`(font-lock-builtin-face :foreground ,macchiato-pink)
-        `(font-lock-preprocessor-face :foreground "#f0c6c6")
-        `(warning :foreground "#cdbe70")
-        `(highlight-quoted-symbol :foreground ,macchiato-yellow)
-        `(highlight-quoted-quote  :foreground ,macchiato-sky)
-        )
-      )
-    )
-
   (defun my-catppuccin-evil-update-cursor-color-h ()
     (put 'cursor 'evil-emacs-color (catppuccin-color 'yellow 'macchiato)))
+  )
+  :first-enable
+  (
+   (setq my-catppuccin-base-color "#272b38")
 
-  ;; Set to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
-  (add-hook 'enable-theme-functions
-            (lambda (theme)
-              (when (and (eq theme 'catppuccin) (eq catppuccin-flavor 'macchiato))
-                (advice-add '+evil-update-cursor-color-h :after #'my-catppuccin-evil-update-cursor-color-h)
-                (my-customize-catppuccin-faces)
-                )))
+   ;;(catppuccin-set-color 'base "#282c34" 'macchiato) ; doom-one background
+   ;;(catppuccin-set-color 'base "#262938" 'macchiato) ; a bit less intense than macchiato
+   ;;(catppuccin-set-color 'base "#272b38" 'macchiato) ; a little less purple, more grey than the above
+   ;;(catppuccin-set-color 'base "#282c3a" 'macchiato) ; should be less than the above, but I can't tell.
 
-  (add-hook 'disable-theme-functions
-            (lambda (theme)
-              (when (and (eq theme 'catppuccin) (eq catppuccin-flavor 'macchiato))
-                (advice-remove '+evil-update-cursor-color-h #'my-catppuccin-evil-update-cursor-color-h)
-                )))
+   (catppuccin-set-color 'base my-catppuccin-base-color 'macchiato)
 
-  (load-theme 'catppuccin t t)
-  ))
+   (load-theme 'catppuccin t t)
+  )
+  :every-enable
+  (
+   (when (eq catppuccin-flavor 'macchiato)
+     ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
+     (advice-add '+evil-update-cursor-color-h :after #'my-catppuccin-evil-update-cursor-color-h)
 
-(use-package! ef-themes
+     (let ((macchiato-red "#ed8796")
+           (macchiato-pink "#f5bde6")
+           (macchiato-yellow "#eed49f")
+           (macchiato-sky "#91d7e3"))
+       (custom-theme-set-faces! 'catppuccin
+         `(show-paren-match :foreground "#ee82ee" :weight bold)
+         ;`(font-lock-builtin-face :foreground ,macchiato-pink)
+         `(font-lock-preprocessor-face :foreground "#f0c6c6")
+         `(warning :foreground "#cdbe70")
+         `(highlight-quoted-symbol :foreground ,macchiato-yellow)
+         `(highlight-quoted-quote  :foreground ,macchiato-sky)
+         )
+       )
+     )
+   )
+  :every-disable
+  (
+   (when (eq catppuccin-flavor 'macchiato)
+     (advice-remove '+evil-update-cursor-color-h #'my-catppuccin-evil-update-cursor-color-h)
+     )
+   )
+  )
+
+(use-theme-package! ef-themes
   :defer (not (my-modus-theme-p doom-theme))
-  :init
+  :theme #'my-modus-theme-p
+  :preface (
   (defun my-modus-theme-p (theme)
     (or
      (string-prefix-p "ef-" (symbol-name theme))
      (string-prefix-p "modus-" (symbol-name theme))))
-
-  :config
-  ;(ef-themes-take-over-modus-themes-mode 1)
-  (modus-themes-include-derivatives-mode 1)
-
+  )
+  :first-load
+  (
+   ;(ef-themes-take-over-modus-themes-mode 1)
+   (modus-themes-include-derivatives-mode 1)
+   )
+  :setup
+  (
   ;; solaire-mode
   (defun my-ef-themes-solaire-faces (loading-theme)
-    (when (my-modus-theme-p loading-theme)
-      ; For whatever reason, loading-theme is not directly available inside modus-themes-with-colors
-      (eval
-       `(modus-themes-with-colors
-          (custom-theme-set-faces!
-            ',loading-theme
-            `(solaire-default-face :inherit default :background ,bg-dim :foreground ,fg-dim)
-            `(solaire-fringe-face :inherit solaire-default-face :foreground ,fg-dim)
-            `(solaire-line-number-face :inherit solaire-default-face :foreground ,fg-dim)
-            `(solaire-mode-line-face :foreground ,fg-dim :background ,bg-mode-line-active)
-            `(solaire-mode-line-inactive-face :inverse-video nil
-              :background ,bg-mode-line-active
-              :foreground ,fg-prose-verbatim)
-            `(solaire-header-line-face :inherit 'solaire-mode-line-face)
-            `(solaire-hl-line-face :background ,bg-active)
-            `(solaire-org-hide-face :background ,bg-dim :foreground ,bg-dim))))
+    ; For whatever reason, loading-theme is not directly available inside modus-themes-with-colors
+    (eval
+     `(modus-themes-with-colors
+        (custom-theme-set-faces!
+          ',loading-theme
+          `(solaire-default-face :inherit default :background ,bg-dim :foreground ,fg-dim)
+          `(solaire-fringe-face :inherit solaire-default-face :foreground ,fg-dim)
+          `(solaire-line-number-face :inherit solaire-default-face :foreground ,fg-dim)
+          `(solaire-mode-line-face :foreground ,fg-dim :background ,bg-mode-line-active)
+          `(solaire-mode-line-inactive-face :inverse-video nil
+            :background ,bg-mode-line-active
+            :foreground ,fg-prose-verbatim)
+          `(solaire-header-line-face :inherit 'solaire-mode-line-face)
+          `(solaire-hl-line-face :background ,bg-active)
+          `(solaire-org-hide-face :background ,bg-dim :foreground ,bg-dim))))
 
-      ; solaire-mode checks this, so necessary to provide manually
-      (put loading-theme 'theme-feature t)
-      )
+    ; solaire-mode checks this, so necessary to provide manually
+    (put loading-theme 'theme-feature t)
     )
-
-  ;; This hook is run *by* enable-theme/load-theme - which means
-  ;; technically it runs /before/ solaire-mode--prepare-for-theme-a
-  ;; which is :after advice on load-theme.
-  (add-hook 'enable-theme-functions #'my-ef-themes-solaire-faces -90)
+  )
+  :every-enable
+  (
+   ;; This code, via the enable-theme-functions hook,
+   ;; is run *by* enable-theme/load-theme - which means
+   ;; technically it runs /before/ solaire-mode--prepare-for-theme-a
+   ;; which is :after advice on load-theme.
+   (my-ef-themes-solaire-faces theme)
+   )
   )
 
 ; Emacs' only supports 16 colors on Windows CLIs,
