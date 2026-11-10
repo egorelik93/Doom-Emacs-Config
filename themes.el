@@ -194,6 +194,8 @@ For other themes, this is usable but consider the ordinary use-package.
    ;; If we need to reload anyway, can put this in :setup,
    ;; but otherwise must be in :init.
 
+   ;; Resolved on emacs 30.
+   ;;
    ;; Inside Windows CLIs, Catpuccin's 256-color quantization
    ;; gets mapped by emacs to something completely unusable.
    ;; We thus map it to 16 colors ourselves.
@@ -204,7 +206,9 @@ For other themes, this is usable but consider the ordinary use-package.
    ;; - Highlights are used by vertico and must be visible without being unreadable.
    ;; - If Highlights of the current line are visible (which they have to be because of prev point),
    ;;   then it should ideally be the same color as region selection.
-   (when (featurep :system 'windows)
+   (when (and (featurep :system 'windows)
+              (version< emacs-version "30.1")
+              (or (not (display-graphic-p)) (daemonp)))
      ; Created by Claude
      (defun my-catppuccin-quantize-to-16 (color)
        "Map a 256-color quantized hex to a Campbell 16-color hex."
@@ -265,6 +269,7 @@ For other themes, this is usable but consider the ordinary use-package.
             ;; Pink/mauve ? magenta family
             (t
              (if (> lum 150) "#b4009e" "#881798"))))))
+     (byte-compile #'my-catppuccin-quantize-to-16)
 
      (advice-add 'catppuccin-quantize-color :filter-return #'my-catppuccin-quantize-to-16)
      )
@@ -406,7 +411,7 @@ For other themes, this is usable but consider the ordinary use-package.
   (add-hook 'tty-setup-hook #'my-setup-wt-tty-colors)
   )
 
-(when (and (featurep :system 'windows) (not (display-graphic-p)))
+(when (and (featurep :system 'windows) (or (not (display-graphic-p)) (daemonp)))
   (add-hook! 'tty-setup-hook
     (unless (memq default-terminal-coding-system '(utf-8 cp65001 utf-8-dos utf-8-unix))
         ; On CMD, this will cause the boon modeline icon to at least
