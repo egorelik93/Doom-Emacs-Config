@@ -148,7 +148,8 @@ For other themes, this is usable but consider the ordinary use-package.
     (setq package-configured-sym (when first-load (intern (concat "use-theme--" (symbol-name package) "--configured"))))
     (setq configure-hooks `(
                             ,@(when (or first-enable every-enable)
-                                (let ((enable-h
+                                (let ((enable-h-sym (intern (concat "use-theme--" (symbol-name package) "--enable-h")))
+                                      (enable-h
                                        (append
                                         (when first-enable
                                           `((unless ,theme-enabled-sym
@@ -160,51 +161,73 @@ For other themes, this is usable but consider the ordinary use-package.
                                         )))
                                   (cond
                                    (theme-eval
-                                    `((mapcar
+                                    `(
+                                      (defun ,enable-h-sym (theme)
+                                        ,@enable-h
+                                        )
+                                      (mapcar
                                        (lambda (theme)
-                                         (use-theme-eval-after-enable theme `(let ((theme ',theme)) ,@',enable-h))
-                                         )
+                                         (use-theme-eval-after-enable theme (lambda () (,enable-h-sym theme))))
                                        ,theme-eval
                                        ))
                                     )
                                    (theme-test
-                                    `((add-hook 'enable-theme-functions
-                                       (defun ,(intern (concat "use-theme--" (symbol-name package) "--enable-h")) (theme)
-                                         (when ,theme-test
-                                           ,@enable-h))
-                                       -50))
+                                    `(
+                                      (defun ,enable-h-sym (theme)
+                                        (when ,theme-test
+                                          ,@enable-h)
+                                        )
+                                      (add-hook 'enable-theme-functions #',enable-h-sym -50))
+                                    )
+                                   ((length= themes 1)
+                                    `((use-theme-eval-after-enable ',(car themes) (lambda () (let ((theme ',(car themes))) ,@enable-h))))
                                     )
                                    (t
-                                    (mapcar
-                                     (lambda (theme)
-                                       `(use-theme-eval-after-enable ',theme `(let ((theme ',',theme)) ,@',enable-h)))
-                                     themes)
-                                    )
+                                    (cons
+                                     `(defun ,enable-h-sym (theme)
+                                        ,@enable-h
+                                        )
+                                     (mapcar
+                                      (lambda (theme)
+                                        `(use-theme-eval-after-enable ',theme (lambda () (,enable-h-sym ',theme))))
+                                      themes)
+                                    ))
                                    )))
                             ,@(when every-disable
-                                (cond
-                                 (theme-eval
-                                  `((mapcar
+                                (let ((disable-h-sym (intern (concat "use-theme--" (symbol-name package) "--disable-h"))))
+                                  (cond
+                                   (theme-eval
+                                    `(
+                                      (defun ,disable-h-sym (theme)
+                                        ,@every-disable
+                                        )
+                                      (mapcar
                                        (lambda (theme)
-                                         (use-theme-eval-after-disable theme `(let ((theme ',theme)) ,@',every-disable))
-                                         )
+                                         (use-theme-eval-after-disable theme (lambda () (,disable-h-sym theme))))
                                        ,theme-eval
                                        ))
-                                  )
-                                (theme-test
-                                 `((add-hook 'disable-theme-functions
-                                    (defun ,(intern (concat "use-theme--" (symbol-name package) "--disable-h")) (theme)
-                                      (when ,theme-test
-                                        @,every-disable))
-                                    -50))
-                                 )
-                                (t
-                                 (mapcar
-                                  (lambda (theme)
-                                    `(use-theme-eval-after-disable ',theme `(let ((theme ',',theme)) ,@',every-disable)))
-                                  themes)
-                                 )
-                                ))))
+                                    )
+                                   (theme-test
+                                    `(
+                                      (defun ,disable-h-sym (theme)
+                                         (when ,theme-test
+                                           @,every-disable))
+                                      (add-hook 'disable-theme-functions #',disable-h-sym -50))
+                                    )
+                                   ((length= themes 1)
+                                    `((use-theme-eval-after-disable ',(car themes) (lambda () (let ((theme ',(car themes))) ,@every-disable))))
+                                    )
+                                   (t
+                                    (cons
+                                     `(defun ,disable-h-sym (theme)
+                                        ,@every-disable
+                                        )
+                                     (mapcar
+                                      (lambda (theme)
+                                        `(use-theme-eval-after-disable ',theme (lambda () (,disable-h-sym ',theme))))
+                                      themes))
+                                    ))))
+                            ))
     (if setup-in-load
         (setq first-load (append first-load configure-hooks))
       (setq init (append init configure-hooks)))
