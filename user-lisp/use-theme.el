@@ -6,8 +6,8 @@
     (funcall f)))
 (add-hook 'enable-theme-functions #'use-theme-enable-theme-h -50)
 
-(defmacro use-theme-eval-after-enable (theme form)
-  `(push ,(if (listp form) `(lambda () (eval ',form)) form) (alist-get ,theme use-theme-enable-theme-alist))
+(defun use-theme-eval-after-enable (theme form)
+  (push (if (functionp form) form (lambda () (eval form))) (alist-get theme use-theme-enable-theme-alist))
   )
 
 (defvar use-theme-disable-theme-alist nil)
@@ -16,8 +16,9 @@
     (funcall f)))
 (add-hook 'disable-theme-functions #'use-theme-disable-theme-h -50)
 
-(defmacro use-theme-eval-after-disable (theme form)
-  `(push ,(if (listp form) `(lambda () (eval ',form)) form) (alist-get ,theme use-theme-disable-theme-alist))
+(defun use-theme-eval-after-disable (theme form)
+  (message "%S" form)
+  (push (if (functionp form) form (lambda () (eval form))) (alist-get theme use-theme-disable-theme-alist))
   )
 
 
@@ -30,6 +31,7 @@
 (cl-defmacro use-theme-package (package
                                 &key
                                 (theme nil)
+                                (theme-eval nil)
                                 (preface nil)
                                 (defer nil)
                                 (init nil)
@@ -54,7 +56,17 @@ For other themes, this is usable but consider the ordinary use-package.
                 Can be used to define functions for use by :defer.
 :theme          Either a theme name, quoted list of theme names, quoted function, or an sexp.
                 Must be provided if the theme name differs from package.
-                If an sexp, it is interpreted as a test of the provided variable \"theme\".
+                If an sexp starting with :eval, it will evaluate the second item of the sexp immediately,
+                expecting a theme name or quoted list of theme names as the result.
+                Otherwise an sexp is interpreted as a test of the provided variable \"theme\".
+:theme-eval     A form.
+                Alternative to :theme, specifies an expression that will be evaluated at runtime
+                to a theme name or list of theme names.
+                The primary purpose is if the package itself provides a list of themes it provides;
+                as such, it is evaluated after loading.
+                Not recommended for long lists, however.
+                This forces :first-load, so consider very carefully whether that is desirable.
+                Often, it is better to just list out the themes manually.
 :defer          Any boolean expression.
                 Unlike use-package, the expression will be evaluated before getting passed
                 to use-package.
@@ -107,21 +119,31 @@ For other themes, this is usable but consider the ordinary use-package.
     (setq first-load config))
   (let* ((themes (cond
                   ((symbolp theme) (list theme))
-                  ((and (listp theme) (eq (car theme) 'quote)) (ensure-list (cadr theme)))
-                  ((and (listp theme) (eq (car theme) 'function)) nil)
-                  ((listp theme) nil)
+                  ((listp theme)
+                   (cond
+                    ((eq (car theme) 'quote) (ensure-list (cadr theme)))
+                    ((eq (car theme) 'function) nil)
+                    ((eq (car theme) ':eval) (ensure-list (eval (cadr theme))))
+                    (t nil)))
+                  (theme-eval nil)
                   (t package)))
+         (theme-eval (when theme-eval `(ensure-list ,theme-eval)))
          (theme-test (cond
-                      ((and (listp theme) (eq (car theme) 'function)) `(funcall ,theme theme))
                       (themes nil)
+                      ((and (listp theme) (eq (car theme) 'function)) `(funcall ,theme theme))
+                      (theme-eval `(memq theme ,theme-eval))
                       (t theme)))
          (defer (when defer (eval defer)))
-         (setup-in-load (or (not defer) first-load every-load))
+         ;; If using theme-eval, we must configure hooks during :first-load.
+         (configure-hooks-in-load (and theme-eval (or setup first-enable every-enable every-disable)))
+         (setup-in-load (or (not defer) first-load every-load configure-hooks-in-load))
          configure-hooks theme-enabled-sym package-configured-sym
          )
     (if setup-in-load
-        (setq first-load (append setup first-load))
-      (setq first-enable (append setup first-enable)))
+        (setq first-load (or (append setup first-load) '(nil)))
+      (setq first-enable (append setup first-enable))
+      )
+
     (setq theme-enabled-sym (when first-enable (intern (concat "use-theme--" (symbol-name package) "--enabled"))))
     (setq package-configured-sym (when first-load (intern (concat "use-theme--" (symbol-name package) "--configured"))))
     (setq configure-hooks `(
@@ -136,26 +158,53 @@ For other themes, this is usable but consider the ordinary use-package.
                                           )
                                         every-enable
                                         )))
-                                  (if theme-test
-                                      `((add-hook 'enable-theme-functions
-                                         (defun ,(intern (concat "use-theme--" (symbol-name package) "--enable-h")) (theme)
-                                           ,@enable-h
-                                           )
-                                         -50))
+                                  (cond
+                                   (theme-eval
+                                    `((mapcar
+                                       (lambda (theme)
+                                         (use-theme-eval-after-enable theme `(let ((theme ',theme)) ,@',enable-h))
+                                         )
+                                       ,theme-eval
+                                       ))
+                                    )
+                                   (theme-test
+                                    `((add-hook 'enable-theme-functions
+                                       (defun ,(intern (concat "use-theme--" (symbol-name package) "--enable-h")) (theme)
+                                         (when ,theme-test
+                                           ,@enable-h))
+                                       -50))
+                                    )
+                                   (t
                                     (mapcar
                                      (lambda (theme)
-                                       `(use-theme-eval-after-enable ',theme (let ((theme ',theme)) ,@enable-h)))
-                                     themes))))
+                                       `(use-theme-eval-after-enable ',theme `(let ((theme ',',theme)) ,@',enable-h)))
+                                     themes)
+                                    )
+                                   )))
                             ,@(when every-disable
-                                (if theme-test
-                                    `((add-hook 'disable-theme-functions
-                                       (lambda (theme) @,every-disable)
-                                       -50))
-                                  (mapcar
-                                   (lambda (theme)
-                                     `(use-theme-eval-after-disable ',theme (let ((theme ',theme)) ,@every-disable)))
-                                   themes)))
-                            ))
+                                (cond
+                                 (theme-eval
+                                  `((mapcar
+                                       (lambda (theme)
+                                         (use-theme-eval-after-disable theme `(let ((theme ',theme)) ,@',every-disable))
+                                         )
+                                       ,theme-eval
+                                       ))
+                                  )
+                                (theme-test
+                                 `((add-hook 'disable-theme-functions
+                                    (defun ,(intern (concat "use-theme--" (symbol-name package) "--disable-h")) (theme)
+                                      (when ,theme-test
+                                        @,every-disable))
+                                    -50))
+                                 )
+                                (t
+                                 (mapcar
+                                  (lambda (theme)
+                                    `(use-theme-eval-after-disable ',theme `(let ((theme ',',theme)) ,@',every-disable)))
+                                  themes)
+                                 )
+                                ))))
     (if setup-in-load
         (setq first-load (append first-load configure-hooks))
       (setq init (append init configure-hooks)))
