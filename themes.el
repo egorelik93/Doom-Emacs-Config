@@ -2,6 +2,22 @@
 
 (require 'use-theme)
 
+;; As I basically never like this color for a cursor,
+;; just set this in the theme during :every-enable and it will be
+;; taken care of.
+;; For this to work, :every-enable must be implemented to run
+;; before doom-load-theme-hook which runs +evil-update-cursor-color-h
+(defvar my-emacs-cursor-color nil)
+(defun my-evil-update-cursor-color-h ()
+  (put 'cursor 'evil-emacs-color  (or my-emacs-cursor-color (face-foreground 'warning)))
+  (put 'cursor 'evil-normal-color (face-background 'cursor)))
+(advice-add '+evil-update-cursor-color-h :override #'my-evil-update-cursor-color-h)
+
+(add-hook 'disable-theme-functions
+          (defun my-reset-emacs-cursor-color ()
+            (setq my-emacs-cursor-color nil)
+            ))
+
 (use-theme-package! catppuccin-theme
   :theme catppuccin
   :defer t
@@ -104,7 +120,7 @@
     (catppuccin-reload))
 
   (defun my-catppuccin-evil-update-cursor-color-h ()
-    (put 'cursor 'evil-emacs-color (catppuccin-color 'yellow 'macchiato)))
+    (put 'cursor 'evil-emacs-color ))
   )
   :first-enable
   (
@@ -138,15 +154,7 @@
   :every-enable
   (
    (when (eq catppuccin-flavor 'macchiato)
-     ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
-     (advice-add '+evil-update-cursor-color-h :after #'my-catppuccin-evil-update-cursor-color-h)
-     )
-   )
-  :every-disable
-  (
-   (when (eq catppuccin-flavor 'macchiato)
-     (advice-remove '+evil-update-cursor-color-h #'my-catppuccin-evil-update-cursor-color-h)
-     )
+     (setq my-emacs-cursor-color (catppuccin-color 'yellow 'macchiato)))
    )
   )
 
@@ -166,16 +174,14 @@
   (
    (setq my-batppuccin-base-color "#272b38")
    (setq my-batppuccin-warning-color "#cdbe70")
+   (setq my-batppuccin-original-yellow (batppuccin-get-color "bat-yellow" 'batppuccin-macchiato))
    (setf (alist-get "bat-base" batppuccin-macchiato-colors-alist) my-batppuccin-base-color)
    (setf (alist-get "bat-yellow" batppuccin-macchiato-colors-alist) my-batppuccin-warning-color)
-
-   (defun my-bat-evil-update-cursor-color-h ()
-     (put 'cursor 'evil-emacs-color (batppuccin-get-color "bat-yellow")))
    )
   :first-enable
   (
    (when (eq theme 'batppuccin-macchiato)
-     (let ((bat-original-yellow "#eed49f"))
+     (let ((bat-original-yellow my-batppuccin-original-yellow))
        (batppuccin-with-colors
          (custom-theme-set-faces! 'batppuccin-macchiato
            `(show-paren-match :foreground "#ee82ee" :background ,bat-surface1 :weight bold)
@@ -265,16 +271,22 @@
   :every-enable
   (
    (when (eq theme 'batppuccin-macchiato)
-     ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
-     (advice-add '+evil-update-cursor-color-h :after #'my-bat-evil-update-cursor-color-h)
-     )
+     (setq my-emacs-cursor-color my-batppuccin-original-yellow))
    )
-  :every-disable
+  )
+
+(use-theme-package! tokyo-night
+  :preface
   (
-   (when (eq theme 'batppuccin-macchiato)
-     (advice-remove '+evil-update-cursor-color-h #'my-bat-evil-update-cursor-color-h)
-     )
+   (defvar my-tokyo-night-variants '(
+                                    tokyo-night
+                                    tokyo-night-storm
+                                    tokyo-night-moon
+                                    tokyo-night-day))
    )
+  :theme (:eval my-tokyo-night-variants)
+  :defer (not (memq doom-theme my-tokyo-night-variants))
+  :assert-loads-once t
   )
 
 (use-theme-package! ef-themes
