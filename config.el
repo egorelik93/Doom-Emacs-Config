@@ -164,7 +164,8 @@ pass (list nil) instead to indicate a nil `cursor-type'
 
 ;(setq doom-theme 'my-doom-oceanic-next)
 ;(setq doom-theme 'ef-owl)
-(setq doom-theme 'catppuccin)
+;(setq doom-theme 'catppuccin)
+(setq doom-theme 'batppuccin-macchiato)
 
 
 (load! "themes")

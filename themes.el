@@ -148,6 +148,128 @@
    )
   )
 
+(use-theme-package! batppuccin
+  :preface
+  (
+   (defvar my-batppuccin-variants '(
+                                    batppuccin-mocha
+                                    batppuccin-macchiato
+                                    batppuccin-frappe
+                                    batppuccin-latte))
+   )
+  :theme (:eval my-batppuccin-variants)
+  :defer (not (memq doom-theme my-batppuccin-variants))
+  :setup
+  (
+   (setq my-batppuccin-base-color "#272b38")
+   (setq my-batppuccin-warning-color "#cdbe70")
+   (setf (alist-get "bat-base" batppuccin-macchiato-colors-alist) my-batppuccin-base-color)
+   (setf (alist-get "bat-yellow" batppuccin-macchiato-colors-alist) my-batppuccin-warning-color)
+
+   (defun my-bat-evil-update-cursor-color-h ()
+     (put 'cursor 'evil-emacs-color (batppuccin-get-color "bat-yellow")))
+   )
+  :every-enable
+  (
+   (when (eq theme 'batppuccin-macchiato)
+     ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
+     (advice-add '+evil-update-cursor-color-h :after #'my-bat-evil-update-cursor-color-h)
+
+     (let ((bat-original-yellow "#eed49f"))
+       (batppuccin-with-colors
+         (custom-theme-set-faces! 'batppuccin-macchiato
+           `(show-paren-match :foreground "#ee82ee" :background ,bat-surface1 :weight bold)
+           ;;`(font-lock-builtin-face :foreground ,bat-pink)
+           `(font-lock-preprocessor-face :foreground "#f0c6c6")
+           ;; Given that batppuccin doesn't use much :inherit,
+           ;; we will take a difference approach from that for catppuccin;
+           ;; we have changed the palette for yellow to my preferred warning colors,
+           ;; and manually set the remainder to the original color.
+           `(ansi-color-bright-yellow :foreground ,bat-original-yellow :background ,bat-original-yellow)
+           `(font-lock-type-face :foreground ,bat-original-yellow)
+           `(diredfl-number :foreground ,bat-original-yellow)
+           `(ruler-mode-current-column :foreground ,bat-original-yellow :weight bold)
+           `(shr-mark :foreground ,bat-base :background ,bat-original-yellow)
+           `(bookmark-face :foreground ,bat-original-yellow)
+           `(diary :foreground ,bat-original-yellow)
+           `(eldoc-highlight-function-argument :foreground ,bat-original-yellow :weight bold)
+           `(nrepl-message-3-face :foreground ,bat-original-yellow)
+           `(consult-bookmark :foreground ,bat-original-yellow)
+           `(haskell-type-face :foreground ,bat-original-yellow)
+           `(haskell-constructor-face :foreground ,bat-original-yellow)
+           `(lsp-ui-sideline-code-action :foreground ,bat-original-yellow)
+           `(magit-tag :foreground ,bat-original-yellow)
+           `(marginalia-type :foreground ,bat-original-yellow)
+           ;; Like other highlight faces, foreground was set to bat-base but
+           ;; this is hard to see in certain contexts.
+           `(asciidoc-highlight-face :foreground ,bat-surface1 :background ,bat-original-yellow)
+           `(rainbow-delimiters-depth-3-face :foreground ,bat-original-yellow)
+           `(web-mode-html-attr-name-face :foreground ,bat-original-yellow)
+           `(web-mode-html-attr-custom-face :foreground ,bat-original-yellow :slant italic)
+           `(web-mode-html-attr-engine-face :foreground ,bat-original-yellow)
+           `(web-mode-block-attr-name-face :foreground ,bat-original-yellow)
+           `(web-mode-annotation-type-face :foreground ,bat-original-yellow)
+           `(web-mode-type-face :foreground ,bat-original-yellow)
+           `(nerd-icons-lyellow :foreground ,bat-original-yellow)
+           `(nerd-icons-yellow :foreground ,bat-original-yellow)
+           `(nerd-icons-dyellow :foreground ,bat-yellow)
+           `(ansi-color-names-vector
+             [,bat-surface1 ,bat-red ,bat-green ,bat-original-yellow
+              ,bat-blue ,bat-pink ,bat-teal ,bat-subtext0])
+           ;; I kind of like the burlywood color originally used for latex -
+           ;; might make a good alternative to yellow here.
+           ;; (currently in catppuccin but not batppuccin)
+           ;;`(highlight-quoted-symbol :foreground ,bat-yellow)
+           `(highlight-quoted-symbol :foreground "burlywood")
+           `(highlight-quoted-quote  :foreground ,bat-sky)
+           ;; batppuccin sets doom-modeline-info to teal, which overrides
+           ;; doom-modeline's settings for boon and god,
+           ;; which batppuccin doesn't know about
+           ;; (but it does know about evil, albeit set quite differently).
+           ;; I will keep the bold however.
+           `(doom-modeline-info :foreground ,bat-green :weight bold)
+           ;; In general, batppuccin switches a lot of red/yellow/green families
+           ;; to red/yellow/blue.
+           `(compilation-info :foreground ,bat-green)
+           `(flymake-note :underline (:style wave :color ,bat-green))
+           `(cider-repl-result-face :inherit success)
+           `(elfeed-log-info-level-face :foreground ,bat-green)
+           `(erlang-edoc-verbatim :foreground ,bat-green)
+           `(flycheck-info :underline (:style wave :color ,bat-green))
+           `(flycheck-error-list-info :foreground ,bat-green)
+           `(flycheck-fringe-info :foreground ,bat-green)
+           `(asciidoc-code-face :foreground ,bat-green :background ,bat-mantle :extend t)
+           `(markdown-code-face :foreground ,bat-green :background ,bat-mantle)
+           `(markdown-inline-code-face :foreground ,bat-green)
+           `(markdown-pre-face :foreground ,bat-green)
+           `(which-key-local-map-description-face :foreground ,bat-green)
+           `(font-latex-verbatim-face :foreground ,bat-green :inherit fixed-pitch)
+           `(undo-tree-visualizer-unmodified-face :foreground ,bat-green)
+
+           ;; For my preferences I prefer to swap these
+           `(org-code :foreground ,bat-green)
+           `(org-verbatim :foreground ,bat-teal)
+           ;; Undecided on this one: auctex is default is some
+           ;; yellow called burlywood; batppuccin changes this to teal.
+           ;; burlywood sticks out better - but perhaps too much.
+           `(font-latex-math-face :foreground "burlywood")
+           ;; Batppuccin sets these to bat-base, but with hl-line
+           ;; that is impossible to see.
+           `(hi-blue :foreground "black" :background ,bat-blue)
+           `(hi-green :foreground "black" :background ,bat-green)
+           `(hi-pink :foreground "black" :background ,bat-pink)
+           `(hi-yellow :foreground "black" :background ,bat-yellow)
+           )))
+     )
+   )
+  :every-disable
+  (
+   (when (eq theme 'batppuccin-macchiato)
+     (advice-remove '+evil-update-cursor-color-h #'my-bat-evil-update-cursor-color-h)
+     )
+   )
+  )
+
 (use-theme-package! ef-themes
   :defer (not (my-modus-theme-p doom-theme))
   :theme #'my-modus-theme-p
