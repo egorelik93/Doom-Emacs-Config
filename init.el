@@ -315,24 +315,31 @@ continues to function despite using a dynamic list of modules."
   (load! "redirect-evil-to-boon" ,doom-user-dir)
   ))
 
+;; Suggested by Google
+(defun my-erase-log-buffer (buf-name)
+  (let ((log-buf (get-buffer buf-name)))
+    (when log-buf
+      (with-current-buffer log-buf
+        (let ((inhibit-read-only t))
+          (erase-buffer)))))
+    )
+
 (defun my-compile-doomdir-elisp (file &optional dir)
   (interactive "f")
   (print! "> Compiling %s ..." file)
+  (my-erase-log-buffer "*Compile-Log*")
   (let ((byte-compile-warnings nil)
         (result (byte-compile-file (expand-file-name file (or dir doom-user-dir)))))
     (unless (or (eq 'no-byte-compile result) (eq t result))
       (with-current-buffer "*Compile-Log*"
         (print! "  - Compilation failed: %s" (buffer-string))))
-    (when (get-buffer "*Compile-Log*")
-      (kill-buffer "*Compile-Log*"))
     )
   (when (native-comp-available-p)
+    (my-erase-log-buffer "*Native-compile-log*")
     (let ((result (native-compile (expand-file-name file (or dir doom-user-dir)))))
       (unless result
         (with-current-buffer "*Native-compile-log*"
           (print! "  - Native Compilation failed: %s" (buffer-string))))
-      (when (get-buffer "*Native-compile-log*")
-        (kill-buffer "*Native-compile-log*"))
       )))
 
 (when (or my-redirect-evil-emacs-maps my-redirect-evil-maps)
