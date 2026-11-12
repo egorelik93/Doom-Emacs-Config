@@ -160,6 +160,7 @@
                                     batppuccin-latte))
    )
   :theme (:eval my-batppuccin-variants)
+  :assert-loads-once t
   :defer (not (memq doom-theme my-batppuccin-variants))
   :setup
   (
@@ -279,6 +280,7 @@
 (use-theme-package! ef-themes
   :defer (not (my-modus-theme-p doom-theme))
   :theme #'my-modus-theme-p
+  :assert-loads-once t
   :preface
   (
    (defun my-modus-theme-p (theme)
