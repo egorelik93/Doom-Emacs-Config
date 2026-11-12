@@ -179,6 +179,46 @@
    (setq my-batppuccin-original-yellow (batppuccin-get-color "bat-yellow" 'batppuccin-macchiato))
    (setf (alist-get "bat-base" batppuccin-macchiato-colors-alist) my-batppuccin-base-color)
    (setf (alist-get "bat-yellow" batppuccin-macchiato-colors-alist) my-batppuccin-warning-color)
+
+   ;; Modified from catpuccin
+
+   ;; Color operations
+   (defun my-batppuccin-hex-to-rgb (color)
+     "Convert a hex COLOR string like \"#rrggbb\" to a list of three integers."
+     (mapcar (lambda (i) (string-to-number (substring color i (+ i 2)) 16))
+             '(1 3 5)))
+
+   (defun my-batppuccin-rgb-to-hex (r g b)
+     "Convert R, G, B integers to a hex color string."
+     (format "#%02x%02x%02x" r g b))
+
+   (defun my-batppuccin-rnd (n)
+     "Round N to the nearest integer."
+     (round (+ 0.5 n)))
+
+   (defun my-batppuccin-lighten (color value)
+     "Lighten COLOR by VALUE% (0–100)."
+     (let* ((factor (/ value 100.0)))
+       (apply #'my-catppuccin-rgb-to-hex
+              (mapcar (lambda (v)
+                        (my-batppuccin-rnd
+                         (min 255 (+ (* (- 255 v) factor) v))))
+                      (my-batppuccin-hex-to-rgb color)))))
+
+   (defun my-batppuccin-darken (color value)
+     "Darken COLOR by VALUE% (0–100)."
+     (let* ((factor (/ value 100.0)))
+       (apply #'my-batppuccin-rgb-to-hex
+              (mapcar (lambda (v)
+                        (floor (* (- 1 factor) v)))
+                      (my-batppuccin-hex-to-rgb color)))))
+
+   (defun my-batppuccin-recolor (color value theme)
+     "Darken or lightens COLOR based on the current flavour."
+     (if (eq theme 'batppuccin-latte)
+         (my-batppuccin-lighten color value)
+       (my-batppuccin-darken color value)))
+
    )
   :first-enable
   (
@@ -267,6 +307,11 @@
            `(hi-green :foreground "black" :background ,bat-green)
            `(hi-pink :foreground "black" :background ,bat-pink)
            `(hi-yellow :foreground "black" :background ,bat-yellow)
+
+           ;; catppuccin dynamically sets these. Lets copy what it does
+           `(diff-hl-change :foreground ,(my-batppuccin-recolor bat-blue 50 theme) :background ,bat-diff-chg-bg)
+           `(diff-hl-delete :foreground ,(my-batppuccin-recolor bat-red 50 theme) :background ,bat-diff-del-bg)
+           `(diff-hl-insert :foreground ,(my-batppuccin-recolor bat-green 50 theme) :background ,bat-diff-add-bg)
            )))
      )
    )
