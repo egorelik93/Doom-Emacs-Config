@@ -2,20 +2,22 @@
 
 (require 'use-theme)
 
-;; As I basically never like this color for a cursor,
+;; If I prefer some color besides warning for the normal state cursor,
 ;; just set this in the theme during :every-enable and it will be
 ;; taken care of.
 ;; For this to work, :every-enable must be implemented to run
 ;; before doom-load-theme-hook which runs +evil-update-cursor-color-h
-(defvar my-emacs-cursor-color nil)
+(defvar my-normal-cursor-color nil)
+;; In keeping with my usage, uses the theme for the emacs state cursor,
+;; and the normal state can be set by setting my-normal-cursor-color.
 (defun my-evil-update-cursor-color-h ()
-  (put 'cursor 'evil-emacs-color  (or my-emacs-cursor-color (face-foreground 'warning)))
-  (put 'cursor 'evil-normal-color (face-background 'cursor)))
+  (put 'cursor 'evil-normal-color  (or my-normal-cursor-color (face-foreground 'warning)))
+  (put 'cursor 'evil-emacs-color (face-background 'cursor)))
 (advice-add '+evil-update-cursor-color-h :override #'my-evil-update-cursor-color-h)
 
 (add-hook 'disable-theme-functions
-          (defun my-reset-emacs-cursor-color ()
-            (setq my-emacs-cursor-color nil)
+          (defun my-reset-normal-cursor-color (_theme)
+            (setq my-normal-cursor-color nil)
             ))
 
 (use-theme-package! catppuccin-theme
@@ -154,7 +156,7 @@
   :every-enable
   (
    (when (eq catppuccin-flavor 'macchiato)
-     (setq my-emacs-cursor-color (catppuccin-color 'yellow 'macchiato)))
+     (setq my-normal-cursor-color (catppuccin-color 'yellow 'macchiato)))
    )
   )
 
@@ -271,7 +273,7 @@
   :every-enable
   (
    (when (eq theme 'batppuccin-macchiato)
-     (setq my-emacs-cursor-color my-batppuccin-original-yellow))
+     (setq my-normal-cursor-color my-batppuccin-original-yellow))
    )
   )
 
