@@ -117,6 +117,22 @@
 
    (catppuccin-set-color 'base my-catppuccin-base-color 'macchiato)
 
+   (when (eq catppuccin-flavor 'macchiato)
+     (let ((macchiato-red "#ed8796")
+           (macchiato-pink "#f5bde6")
+           (macchiato-yellow "#eed49f")
+           (macchiato-sky "#91d7e3"))
+       (custom-theme-set-faces! 'catppuccin
+         `(show-paren-match :foreground "#ee82ee" :weight bold)
+                                        ;`(font-lock-builtin-face :foreground ,macchiato-pink)
+         `(font-lock-preprocessor-face :foreground "#f0c6c6")
+         `(warning :foreground "#cdbe70")
+         `(highlight-quoted-symbol :foreground ,macchiato-yellow)
+         `(highlight-quoted-quote  :foreground ,macchiato-sky)
+         )
+       )
+     )
+
    (load-theme 'catppuccin t t)
   )
   :every-enable
@@ -124,20 +140,6 @@
    (when (eq catppuccin-flavor 'macchiato)
      ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
      (advice-add '+evil-update-cursor-color-h :after #'my-catppuccin-evil-update-cursor-color-h)
-
-     (let ((macchiato-red "#ed8796")
-           (macchiato-pink "#f5bde6")
-           (macchiato-yellow "#eed49f")
-           (macchiato-sky "#91d7e3"))
-       (custom-theme-set-faces! 'catppuccin
-         `(show-paren-match :foreground "#ee82ee" :weight bold)
-         ;`(font-lock-builtin-face :foreground ,macchiato-pink)
-         `(font-lock-preprocessor-face :foreground "#f0c6c6")
-         `(warning :foreground "#cdbe70")
-         `(highlight-quoted-symbol :foreground ,macchiato-yellow)
-         `(highlight-quoted-quote  :foreground ,macchiato-sky)
-         )
-       )
      )
    )
   :every-disable
@@ -169,12 +171,9 @@
    (defun my-bat-evil-update-cursor-color-h ()
      (put 'cursor 'evil-emacs-color (batppuccin-get-color "bat-yellow")))
    )
-  :every-enable
+  :first-enable
   (
    (when (eq theme 'batppuccin-macchiato)
-     ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
-     (advice-add '+evil-update-cursor-color-h :after #'my-bat-evil-update-cursor-color-h)
-
      (let ((bat-original-yellow "#eed49f"))
        (batppuccin-with-colors
          (custom-theme-set-faces! 'batppuccin-macchiato
@@ -260,6 +259,13 @@
            `(hi-pink :foreground "black" :background ,bat-pink)
            `(hi-yellow :foreground "black" :background ,bat-yellow)
            )))
+     )
+   )
+  :every-enable
+  (
+   (when (eq theme 'batppuccin-macchiato)
+     ;; :every-enable must be implemented to run before doom-load-theme-hook which runs +evil-update-cursor-color-h
+     (advice-add '+evil-update-cursor-color-h :after #'my-bat-evil-update-cursor-color-h)
      )
    )
   :every-disable
