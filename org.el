@@ -478,62 +478,62 @@ zero-width space is removed. The org backend is left untouched."
   (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
   )
 
-(use-package! org-latex-preview
-   :if (executable-find "latex")
-  ;; Turn on `org-latex-preview-mode', it's built into Org and much faster/more
-  ;; featured than org-fragtog. (Remember to turn off/uninstall org-fragtog.)
-  :hook (org-mode . org-latex-preview-mode)
-  :after org
-  :init
+(after! org
+  (use-package! org-latex-preview
+    :if (executable-find "latex")
+    ;; Turn on `org-latex-preview-mode', it's built into Org and much faster/more
+    ;; featured than org-fragtog. (Remember to turn off/uninstall org-fragtog.)
+    :hook (org-mode . org-latex-preview-mode)
+    :init
 
-  ;; The function org-latex-preview is an autoload, so we can set the
-  ;; keybindings before loading the package.
+    ;; The function org-latex-preview is an autoload, so we can set the
+    ;; keybindings before loading the package.
 
-  (defun my/org-latex-preview-all (&optional arg)
-    (interactive "P")
-    (org-latex-preview (my/shift-prefix arg 2)))
+    (defun my/org-latex-preview-all (&optional arg)
+      (interactive "P")
+      (org-latex-preview (my/shift-prefix arg 2)))
 
-  (map! :localleader :mode org-mode
-        (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
-        :prefix ("z" . "previews/misc")
-        :desc "Preview latex" "l" #'org-latex-preview
-        :desc "Preview all latex" "L" #'my/org-latex-preview-all
-        )
+    (map! :localleader :mode org-mode
+          (:desc "Insert Zero-width space" "SPC" (cmd! (insert #x200B)))
+          :prefix ("z" . "previews/misc")
+          :desc "Preview latex" "l" #'org-latex-preview
+          :desc "Preview all latex" "L" #'my/org-latex-preview-all
+          )
 
-  :config
-  ;; Increase preview width
-  (plist-put org-latex-preview-appearance-options
-             :page-width nil)
-  ; Not sure if this is true for all machines,
-  ; but in the environments I have tried this on, the scale is too big.
-  ; It no longer seems to have effect on those machines, but leaving the preference.
-  (plist-put org-latex-preview-appearance-options
-             :scale 0.5)
-  ; zoom, on the other hand, seems too small on some machines but not others.
-  ;(plist-put org-latex-preview-appearance-options
-  ;           :zoom 1.25)
-  ; While transparent seems better, I have seen it cause some diagrams to
-  ; inexplicably have a black foreground, which is hard to read.
-  (plist-put org-latex-preview-appearance-options
-             :background 'auto)
+    :config
+    ;; Increase preview width
+    (plist-put org-latex-preview-appearance-options
+               :page-width nil)
+                                        ; Not sure if this is true for all machines,
+                                        ; but in the environments I have tried this on, the scale is too big.
+                                        ; It no longer seems to have effect on those machines, but leaving the preference.
+    (plist-put org-latex-preview-appearance-options
+               :scale 0.5)
+                                        ; zoom, on the other hand, seems too small on some machines but not others.
+                                        ;(plist-put org-latex-preview-appearance-options
+                                        ;           :zoom 1.25)
+                                        ; While transparent seems better, I have seen it cause some diagrams to
+                                        ; inexplicably have a black foreground, which is hard to read.
+    (plist-put org-latex-preview-appearance-options
+               :background 'auto)
 
-  ;; ;; Use dvisvgm to generate previews
-  ;; ;; You don't need this, it's the default:
-  (setq org-latex-preview-process-default 'dvisvgm)
+    ;; ;; Use dvisvgm to generate previews
+    ;; ;; You don't need this, it's the default:
+    (setq org-latex-preview-process-default 'dvisvgm)
 
-  ;; ;; Block C-n, C-p etc from opening up previews when using `org-latex-preview-mode'
-  ;; (setq org-latex-preview-mode-ignored-commands
-  ;;       '(next-line previous-line mwheel-scroll
-  ;;         scroll-up-command scroll-down-command))
+    ;; ;; Block C-n, C-p etc from opening up previews when using `org-latex-preview-mode'
+    ;; (setq org-latex-preview-mode-ignored-commands
+    ;;       '(next-line previous-line mwheel-scroll
+    ;;         scroll-up-command scroll-down-command))
 
-  ;; ;; Enable consistent equation numbering
-  ;; (setq org-latex-preview-numbered t)
+    ;; ;; Enable consistent equation numbering
+    ;; (setq org-latex-preview-numbered t)
 
-  ;; Bonus: Turn on live previews.  This shows you a live preview of a LaTeX
-  ;; fragment and updates the preview in real-time as you edit it.
-  ;; To preview only environments, set it to '(block edit-special) instead
-  (setq org-latex-preview-mode-display-live t)
+    ;; Bonus: Turn on live previews.  This shows you a live preview of a LaTeX
+    ;; fragment and updates the preview in real-time as you edit it.
+    ;; To preview only environments, set it to '(block edit-special) instead
+    (setq org-latex-preview-mode-display-live t)
 
-  ;; More immediate live-previews -- the default delay is 1 second
-  (setq org-latex-preview-mode-update-delay 0.25)
-  )
+    ;; More immediate live-previews -- the default delay is 1 second
+    (setq org-latex-preview-mode-update-delay 0.25)
+    ))
