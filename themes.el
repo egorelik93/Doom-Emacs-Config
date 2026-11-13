@@ -403,6 +403,23 @@
    )
   )
 
+(use-theme-package! my-doom-batppuccin-macchiato-theme
+  :theme my-doom-batppuccin-macchiato
+  :defer t
+  :first-enable
+  (
+   (load-theme 'batppuccin-macchiato t t)
+   )
+  :every-enable
+  (
+   (enable-theme 'batppuccin-macchiato)
+   )
+  :every-disable
+  (
+   (disable-theme 'batppuccin-macchiato)
+   )
+  )
+
 (use-theme-package! tokyo-night
   :preface
   (
