@@ -174,13 +174,7 @@
   :defer (not (memq doom-theme my-batppuccin-variants))
   :setup
   (
-   (setq my-batppuccin-base-color "#272b38")
-   (setq my-batppuccin-warning-color "#cdbe70")
-   (setq my-batppuccin-original-yellow (batppuccin-get-color "bat-yellow" 'batppuccin-macchiato))
-   (setf (alist-get "bat-base" batppuccin-macchiato-colors-alist) my-batppuccin-base-color)
-   (setf (alist-get "bat-yellow" batppuccin-macchiato-colors-alist) my-batppuccin-warning-color)
-
-   ;; Modified from catpuccin
+   ;; Copied from catpuccin
 
    ;; Color operations
    (defun my-batppuccin-hex-to-rgb (color)
@@ -219,118 +213,186 @@
          (my-batppuccin-lighten color value)
        (my-batppuccin-darken color value)))
 
+
+   (defun my-rgb-diff (rgb1 rgb2)
+     (mapcar (lambda (i) (- (nth i rgb1) (nth i rgb2))) '(0 1 2))
+     )
+
+   (defun my-rgb-add (rgb diff)
+     (mapcar (lambda (i) (+ (nth i rgb) (nth i diff))) '(0 1 2))
+     )
+
+
+   (setq my-batppuccin-base-color "#272b38")
+   (setq my-batppuccin-warning-color "#cdbe70")
+   (setq my-batppuccin-original-yellow (batppuccin-get-color "bat-yellow" 'batppuccin-macchiato))
+   (setf (alist-get "bat-base" batppuccin-macchiato-colors-alist) my-batppuccin-base-color)
+   (setf (alist-get "bat-yellow" batppuccin-macchiato-colors-alist) my-batppuccin-warning-color)
+
+   ;; Obtained by taking the hex value difference between bat-base and bat-cursor-line
+   ;; and adding to my base.
+   ;; We can also get to this same number by noting that
+   ;; the current (my-batppuccin-darken bat-cursor-line 12) = bat-base exactly,
+   ;; and finding a number that satisfies the same equation with our bat-base.
+   ;; That turns out to be this number.
+   ;; I do still like the slight blue tint of the original color, however.
+   (setq my-batppuccin-cursor-line-color "#2d3140")
+   ;; Another idea:
+   ;; Batppuccin's cursor-line-color is close to (my-batppuccin-lighten ,bat-base 2.3)
+   ;; Lighten my base by the same and apply the rgb difference.
+   ;; The two end up extremely close, but the first looks a tad more natural.
+   ;;(setq my-batppuccin-cursor-line-color "#2c3140")
+   ;;(setq my-batppuccin-cursor-line-color
+   ;;      (apply #'my-batppuccin-rgb-to-hex
+   ;;             (my-rgb-add
+   ;;              (my-batppuccin-hex-to-rgb (my-batppuccin-lighten my-batppuccin-base-color 2.3))
+   ;;              (my-rgb-diff
+   ;;               (my-batppuccin-hex-to-rgb "#2a2d42")
+   ;;               (my-batppuccin-hex-to-rgb (my-batppuccin-lighten "#24273a" 2.3))))))
+
+   (setf (alist-get "bat-cursor-line" batppuccin-macchiato-colors-alist) my-batppuccin-cursor-line-color)
+
+   ;; Unfortunately, no such nice equation for bat-selection.
+   ;; We try the catppuccin formula and add the difference in bases.
+   ;; A few different methods ended up with a number close to this.
+   (setq my-batppuccin-selection-color
+         (apply #'my-batppuccin-rgb-to-hex
+                (my-rgb-add
+                 (my-batppuccin-hex-to-rgb (my-batppuccin-lighten my-batppuccin-base-color 17))
+                 (my-rgb-diff
+                  (my-batppuccin-hex-to-rgb "#494d64")
+                  (my-batppuccin-hex-to-rgb (my-batppuccin-lighten "#24273a" 17))))))
+
+   (setf (alist-get "bat-selection" batppuccin-macchiato-colors-alist) my-batppuccin-selection-color)
+
    )
   :every-enable
   (
-   (batppuccin-with-colors
-     (let (
-           (bat-yellow (if (eq theme 'batppuccin-macchiato) my-batppuccin-original-yellow bat-yellow))
-           (bat-warning (if (eq theme 'batppuccin-macchiato) my-batppuccin-warning-color bat-yellow))
-           (class '((class color) (min-colors 88)))
+   ;; I hate doing this, but batppuccin sets the current flavor too late.
+   (let ((batppuccin--current theme))
+     (batppuccin-with-colors
+       (let (
+             (bat-yellow (if (eq theme 'batppuccin-macchiato) my-batppuccin-original-yellow bat-yellow))
+             (bat-warning (if (eq theme 'batppuccin-macchiato) my-batppuccin-warning-color bat-yellow))
+             (class '((class color) (min-colors 88)))
+             )
+
+         (when (eq theme 'batppuccin-macchiato)
+           (custom-theme-set-faces
+            'batppuccin-macchiato
+            `(show-paren-match ((,class :foreground "#ee82ee" :background ,bat-surface1 :weight bold)))
+            ;;`(font-lock-builtin-face ((,class :foreground ,bat-pink)))
+            `(font-lock-preprocessor-face ((,class :foreground "#f0c6c6")))
+            ;; Undecided on this one: auctex is default is some
+            ;; yellow called burlywood; batppuccin changes this to teal.
+            ;; burlywood sticks out better - but perhaps too much.
+            `(font-latex-math-face ((,class :foreground "burlywood")))
+            ;; Batppuccin sets these to bat-base, but with hl-line
+            ;; that is impossible to see.
+            `(hi-blue ((,class :foreground ,(my-batppuccin-darken bat-mantle 50) :background ,bat-blue)))
+            `(hi-green ((,class :foreground ,(my-batppuccin-darken bat-mantle 50) :background ,bat-green)))
+            `(hi-pink ((,class :foreground ,(my-batppuccin-darken bat-mantle 50) :background ,bat-pink)))
+            `(hi-yellow ((,class :foreground ,(my-batppuccin-darken bat-mantle 50) :background ,bat-yellow)))
+            )
+
+           (setq my-normal-cursor-color bat-yellow)
+
+           ;; This must be called after indent-bars loads or it will get reset.
+           (after! indent-bars
+             ;; The comment face is too visible for this.
+             (setq indent-bars-color `(,bat-overlay0 :face-bg nil :blend 0.425)))
            )
 
-       (when (eq theme 'batppuccin-macchiato)
+         ;; Use this list for any fundamental swaps to batppuccin.
+         ;; Since batppuccin itself uses custom-theme-set-faces,
+         ;; this makes it easier to copy/paste.
          (custom-theme-set-faces
-          'batppuccin-macchiato
-          `(show-paren-match ((,class :foreground "#ee82ee" :background ,bat-surface1 :weight bold)))
-          ;;`(font-lock-builtin-face ((,class :foreground ,bat-pink)))
-          `(font-lock-preprocessor-face ((,class :foreground "#f0c6c6")))
-          ;; Undecided on this one: auctex is default is some
-          ;; yellow called burlywood; batppuccin changes this to teal.
-          ;; burlywood sticks out better - but perhaps too much.
-          `(font-latex-math-face ((,class :foreground "burlywood")))
-          ;; Batppuccin sets these to bat-base, but with hl-line
-          ;; that is impossible to see.
-          `(hi-blue ((,class :foreground "black" :background ,bat-blue)))
-          `(hi-green ((,class :foreground "black" :background ,bat-green)))
-          `(hi-pink ((,class :foreground "black" :background ,bat-pink)))
-          `(hi-yellow ((,class :foreground "black" :background ,bat-yellow)))
+          theme
+          ;; Given that batppuccin doesn't use much :inherit,
+          ;; we will take a difference approach from that for catppuccin;
+          ;; we have changed the palette for yellow to my preferred warning colors,
+          ;; and manually set the remainder to the original color.
+          `(ansi-color-bright-yellow ((,class (:foreground ,bat-yellow :background ,bat-yellow))))
+          `(font-lock-type-face ((,class :foreground ,bat-yellow)))
+          `(diredfl-number ((,class :foreground ,bat-yellow)))
+          `(ruler-mode-current-column ((,class :foreground ,bat-yellow :weight bold)))
+          `(shr-mark ((,class :foreground ,bat-base :background ,bat-yellow)))
+          `(bookmark-face ((,class :foreground ,bat-yellow)))
+          `(diary ((,class :foreground ,bat-yellow)))
+          `(eldoc-highlight-function-argument ((,class :foreground ,bat-yellow :weight bold)))
+          `(nrepl-message-3-face ((,class :foreground ,bat-yellow)))
+          `(consult-bookmark ((,class :foreground ,bat-yellow)))
+          `(haskell-type-face ((,class :foreground ,bat-yellow)))
+          `(haskell-constructor-face ((,class :foreground ,bat-yellow)))
+          `(lsp-ui-sideline-code-action ((,class :foreground ,bat-yellow)))
+          `(magit-tag ((,class :foreground ,bat-yellow)))
+          `(marginalia-type ((,class :foreground ,bat-yellow)))
+          ;; Like other highlight faces, foreground was set to bat-base but
+          ;; this is hard to see in certain contexts.
+          `(asciidoc-highlight-face ((,class :foreground ,bat-surface1 :background ,bat-yellow)))
+          `(rainbow-delimiters-depth-3-face ((,class :foreground ,bat-yellow)))
+          `(web-mode-html-attr-name-face ((,class :foreground ,bat-yellow)))
+          `(web-mode-html-attr-custom-face ((,class :foreground ,bat-yellow :slant italic)))
+          `(web-mode-html-attr-engine-face ((,class :foreground ,bat-yellow)))
+          `(web-mode-block-attr-name-face ((,class :foreground ,bat-yellow)))
+          `(web-mode-annotation-type-face ((,class :foreground ,bat-yellow)))
+          `(web-mode-type-face ((,class :foreground ,bat-yellow)))
+          `(nerd-icons-lyellow ((,class :foreground ,bat-yellow)))
+          `(nerd-icons-yellow ((,class :foreground ,bat-yellow)))
+          `(nerd-icons-dyellow ((,class :foreground ,bat-warning)))
+          ;; batppuccin sets doom-modeline-info to teal, which overrides
+          ;; doom-modeline's settings for boon and god,
+          ;; which batppuccin doesn't know about
+          ;; (but it does know about evil, albeit set quite differently).
+          ;; I will keep the bold however.
+          `(doom-modeline-info ((,class :foreground ,bat-green :weight bold)))
+          ;; In general, batppuccin switches a lot of red/yellow/green families
+          ;; to red/yellow/blue.
+          `(compilation-info ((,class :foreground ,bat-green)))
+          `(flymake-note ((,class :underline (:style wave :color ,bat-green))))
+          `(cider-repl-result-face ((,class :foreground ,bat-green)))
+          `(elfeed-log-info-level-face ((,class :foreground ,bat-green)))
+          `(erlang-edoc-verbatim ((,class :foreground ,bat-green)))
+          `(flycheck-info ((,class :underline (:style wave :color ,bat-green))))
+          `(flycheck-error-list-info ((,class :foreground ,bat-green)))
+          `(flycheck-fringe-info ((,class :foreground ,bat-green)))
+          `(asciidoc-code-face ((,class :foreground ,bat-green :background ,bat-mantle :extend t)))
+          `(markdown-code-face ((,class :foreground ,bat-green :background ,bat-mantle)))
+          `(markdown-inline-code-face ((,class :foreground ,bat-green)))
+          `(markdown-pre-face ((,class :foreground ,bat-green)))
+          `(which-key-local-map-description-face ((,class :foreground ,bat-green)))
+          `(font-latex-verbatim-face ((,class :foreground ,bat-green :inherit fixed-pitch)))
+          `(undo-tree-visualizer-unmodified-face ((,class :foreground ,bat-green)))
+
+          ;; For my preferences I prefer to swap these
+          `(org-code ((,class :foreground ,bat-green)))
+          `(org-verbatim ((,class :foreground ,bat-teal)))
+
+          ;; catppuccin dynamically sets these. Lets copy what it does
+          `(diff-hl-change ((,class :foreground ,(my-batppuccin-recolor bat-blue 50 theme) :background ,bat-diff-chg-bg)))
+          `(diff-hl-delete ((,class :foreground ,(my-batppuccin-recolor bat-red 50 theme) :background ,bat-diff-del-bg)))
+          `(diff-hl-insert ((,class :foreground ,(my-batppuccin-recolor bat-green 50 theme) :background ,bat-diff-add-bg)))
+          `(diff-refine-added ((,class (:foreground ,bat-green :background ,(my-batppuccin-recolor bat-diff-add-bg -20 theme) :weight bold :extend t))))
+          `(diff-refine-removed ((,class (:foreground ,bat-red :background ,(my-batppuccin-recolor bat-diff-del-bg -20 theme) :weight bold :extend t))))
+
+          ;; Too visible for my preferences
+          `(font-lock-comment-face ((,class (:foreground ,bat-overlay1 :slant italic))))
+          ;; Make it better contrast with comments
+          `(font-lock-doc-face ((,class (:foreground ,bat-overlay2 :slant normal))))
           )
 
-         (setq my-normal-cursor-color bat-yellow)
-         )
-
-       ;; Use this list for any fundamental swaps to batppuccin.
-       ;; Since batppuccin itself uses custom-theme-set-faces,
-       ;; this makes it easier to copy/paste.
-       (custom-theme-set-faces
-        theme
-        ;; Given that batppuccin doesn't use much :inherit,
-        ;; we will take a difference approach from that for catppuccin;
-        ;; we have changed the palette for yellow to my preferred warning colors,
-        ;; and manually set the remainder to the original color.
-        `(ansi-color-bright-yellow ((,class (:foreground ,bat-yellow :background ,bat-yellow))))
-        `(font-lock-type-face ((,class :foreground ,bat-yellow)))
-        `(diredfl-number ((,class :foreground ,bat-yellow)))
-        `(ruler-mode-current-column ((,class :foreground ,bat-yellow :weight bold)))
-        `(shr-mark ((,class :foreground ,bat-base :background ,bat-yellow)))
-        `(bookmark-face ((,class :foreground ,bat-yellow)))
-        `(diary ((,class :foreground ,bat-yellow)))
-        `(eldoc-highlight-function-argument ((,class :foreground ,bat-yellow :weight bold)))
-        `(nrepl-message-3-face ((,class :foreground ,bat-yellow)))
-        `(consult-bookmark ((,class :foreground ,bat-yellow)))
-        `(haskell-type-face ((,class :foreground ,bat-yellow)))
-        `(haskell-constructor-face ((,class :foreground ,bat-yellow)))
-        `(lsp-ui-sideline-code-action ((,class :foreground ,bat-yellow)))
-        `(magit-tag ((,class :foreground ,bat-yellow)))
-        `(marginalia-type ((,class :foreground ,bat-yellow)))
-        ;; Like other highlight faces, foreground was set to bat-base but
-        ;; this is hard to see in certain contexts.
-        `(asciidoc-highlight-face ((,class :foreground ,bat-surface1 :background ,bat-yellow)))
-        `(rainbow-delimiters-depth-3-face ((,class :foreground ,bat-yellow)))
-        `(web-mode-html-attr-name-face ((,class :foreground ,bat-yellow)))
-        `(web-mode-html-attr-custom-face ((,class :foreground ,bat-yellow :slant italic)))
-        `(web-mode-html-attr-engine-face ((,class :foreground ,bat-yellow)))
-        `(web-mode-block-attr-name-face ((,class :foreground ,bat-yellow)))
-        `(web-mode-annotation-type-face ((,class :foreground ,bat-yellow)))
-        `(web-mode-type-face ((,class :foreground ,bat-yellow)))
-        `(nerd-icons-lyellow ((,class :foreground ,bat-yellow)))
-        `(nerd-icons-yellow ((,class :foreground ,bat-yellow)))
-        `(nerd-icons-dyellow ((,class :foreground ,bat-warning)))
-        ;; batppuccin sets doom-modeline-info to teal, which overrides
-        ;; doom-modeline's settings for boon and god,
-        ;; which batppuccin doesn't know about
-        ;; (but it does know about evil, albeit set quite differently).
-        ;; I will keep the bold however.
-        `(doom-modeline-info ((,class :foreground ,bat-green :weight bold)))
-        ;; In general, batppuccin switches a lot of red/yellow/green families
-        ;; to red/yellow/blue.
-        `(compilation-info ((,class :foreground ,bat-green)))
-        `(flymake-note ((,class :underline (:style wave :color ,bat-green))))
-        `(cider-repl-result-face ((,class :foreground ,bat-green)))
-        `(elfeed-log-info-level-face ((,class :foreground ,bat-green)))
-        `(erlang-edoc-verbatim ((,class :foreground ,bat-green)))
-        `(flycheck-info ((,class :underline (:style wave :color ,bat-green))))
-        `(flycheck-error-list-info ((,class :foreground ,bat-green)))
-        `(flycheck-fringe-info ((,class :foreground ,bat-green)))
-        `(asciidoc-code-face ((,class :foreground ,bat-green :background ,bat-mantle :extend t)))
-        `(markdown-code-face ((,class :foreground ,bat-green :background ,bat-mantle)))
-        `(markdown-inline-code-face ((,class :foreground ,bat-green)))
-        `(markdown-pre-face ((,class :foreground ,bat-green)))
-        `(which-key-local-map-description-face ((,class :foreground ,bat-green)))
-        `(font-latex-verbatim-face ((,class :foreground ,bat-green :inherit fixed-pitch)))
-        `(undo-tree-visualizer-unmodified-face ((,class :foreground ,bat-green)))
-
-        ;; For my preferences I prefer to swap these
-        `(org-code ((,class :foreground ,bat-green)))
-        `(org-verbatim ((,class :foreground ,bat-teal)))
-
-        ;; catppuccin dynamically sets these. Lets copy what it does
-        `(diff-hl-change ((,class :foreground ,(my-batppuccin-recolor bat-blue 50 theme) :background ,bat-diff-chg-bg)))
-        `(diff-hl-delete ((,class :foreground ,(my-batppuccin-recolor bat-red 50 theme) :background ,bat-diff-del-bg)))
-        `(diff-hl-insert ((,class :foreground ,(my-batppuccin-recolor bat-green 50 theme) :background ,bat-diff-add-bg)))
-        `(diff-refine-added ((,class (:foreground ,bat-green :background ,(my-batppuccin-recolor bat-diff-add-bg -20 theme) :weight bold :extend t))))
-        `(diff-refine-removed ((,class (:foreground ,bat-red :background ,(my-batppuccin-recolor bat-diff-del-bg -20 theme) :weight bold :extend t))))
-        )
-
-       (custom-theme-set-variables
-        theme
-        `(ansi-color-names-vector
-          [,bat-surface1 ,bat-red ,bat-green ,bat-yellow
-                         ,bat-blue ,bat-pink ,bat-teal ,bat-subtext0]))
-
-
-       )))
+         (custom-theme-set-variables
+          theme
+          `(ansi-color-names-vector
+            [,bat-surface1 ,bat-red ,bat-green ,bat-yellow
+                           ,bat-blue ,bat-pink ,bat-teal ,bat-subtext0]))
+         )))
+   )
+  :every-disable
+  (
+   ;; Set back to default
+   (setq indent-bars-color '(font-lock-comment-face :face-bg nil :blend 0.425))
+   )
   )
 
 (use-theme-package! tokyo-night
