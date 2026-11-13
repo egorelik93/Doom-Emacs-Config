@@ -90,6 +90,10 @@
 
 (package! batppuccin)
 
+(package! tokyo-night)
+
+(package! kaolin-themes)
+
 ; The built-in module enables it globally without any opportunity to disable,
 ; which is not what I want.
 (package! god-mode)
