@@ -235,7 +235,7 @@ For other themes, this is usable but consider the ordinary use-package.
                                     ))))
                             ))
     (if setup-in-load
-        (setq first-load (append first-load configure-hooks))
+        (setq first-load (remq nil (append first-load configure-hooks)))
       (setq init (append init configure-hooks)))
 
     (when assert-loads-once
