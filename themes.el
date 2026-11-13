@@ -3,21 +3,21 @@
 (require 'use-theme)
 
 ;; If I prefer some color besides warning for the normal state cursor,
-;; just set this in the theme during :every-enable and it will be
-;; taken care of.
-;; For this to work, :every-enable must be implemented to run
-;; before doom-load-theme-hook which runs +evil-update-cursor-color-h
-(defvar my-normal-cursor-color nil)
+;; call this in the theme during :every-enable.
+(defun my-set-normal-cursor-color (color)
+  (put 'cursor 'evil-normal-color color)
+  )
+
 ;; In keeping with my usage, uses the theme for the emacs state cursor,
-;; and the normal state can be set by setting my-normal-cursor-color.
+;; and the normal state can be set by calling my-set-normal-cursor-color.
 (defun my-evil-update-cursor-color-h ()
-  (put 'cursor 'evil-normal-color  (or my-normal-cursor-color (face-foreground 'warning)))
+  (put 'cursor 'evil-normal-color (face-foreground 'warning))
   (put 'cursor 'evil-emacs-color (face-background 'cursor)))
 (advice-add '+evil-update-cursor-color-h :override #'my-evil-update-cursor-color-h)
 
 (add-hook 'disable-theme-functions
           (defun my-reset-normal-cursor-color (_theme)
-            (setq my-normal-cursor-color nil)
+            (put 'cursor 'evil-normal-color (face-foreground 'warning))
             ))
 
 (use-theme-package! catppuccin-theme
@@ -156,7 +156,7 @@
   :every-enable
   (
    (when (eq catppuccin-flavor 'macchiato)
-     (setq my-normal-cursor-color (catppuccin-color 'yellow 'macchiato)))
+     (my-set-normal-cursor-color (catppuccin-color 'yellow 'macchiato)))
    )
   )
 
@@ -295,7 +295,7 @@
             `(hi-yellow ((,class :foreground ,(my-batppuccin-darken bat-mantle 50) :background ,bat-yellow)))
             )
 
-           (setq my-normal-cursor-color bat-yellow)
+           (my-set-normal-cursor-color bat-yellow)
 
            ;; This must be called after indent-bars loads or it will get reset.
            (after! indent-bars

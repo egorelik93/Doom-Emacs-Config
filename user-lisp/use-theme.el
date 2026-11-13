@@ -4,7 +4,7 @@
 (defun use-theme-enable-theme-h (theme)
   (dolist (f (alist-get theme use-theme-enable-theme-alist))
     (funcall f)))
-(add-hook 'enable-theme-functions #'use-theme-enable-theme-h -91)
+(add-hook 'enable-theme-functions #'use-theme-enable-theme-h -10)
 
 (defun use-theme-eval-after-enable (theme form)
   (push (if (functionp form) form (lambda () (eval form))) (alist-get theme use-theme-enable-theme-alist))
