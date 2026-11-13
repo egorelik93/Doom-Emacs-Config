@@ -379,6 +379,14 @@
           `(font-lock-comment-face ((,class (:foreground ,bat-overlay1 :slant italic))))
           ;; Make it better contrast with comments
           `(font-lock-doc-face ((,class (:foreground ,bat-overlay2 :slant normal))))
+
+          ;; Some solaire-mode adjustments based on what catppuccin does.
+          `(solaire-fringe-face ((,class (:background ,bat-mantle :foreground ,bat-surface1))))
+          ;; This is what controls whether the doom dashboard modeline has the same background color;
+          ;; undecided how I feel about it.
+          ;;`(solaire-mode-line-face ((,class :background ,bat-crust nil :foreground ,bat-text)))
+          `(solaire-mode-line-inactive-face ((,class :inverse-video nil :background ,bat-crust :foreground ,bat-subtext1)))
+          `(solaire-header-line-face ((,class :inherit solaire-mode-line-face)))
           )
 
          (custom-theme-set-variables
