@@ -387,6 +387,9 @@
           ;;`(solaire-mode-line-face ((,class :background ,bat-crust nil :foreground ,bat-text)))
           `(solaire-mode-line-inactive-face ((,class :inverse-video nil :background ,bat-crust :foreground ,bat-subtext1)))
           `(solaire-header-line-face ((,class :inherit solaire-mode-line-face)))
+
+          ;; I dislike batppuccin's deviation here
+          `(org-block ((,class :extend t :background ,bat-mantle :foreground ,bat-green)))
           )
 
          (custom-theme-set-variables
