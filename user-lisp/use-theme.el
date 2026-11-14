@@ -7,17 +7,17 @@
 (add-hook 'enable-theme-functions #'use-theme-enable-theme-h -10)
 
 (defun use-theme-eval-after-enable (theme form)
-  (push (if (functionp form) form (lambda () (eval form))) (alist-get theme use-theme-enable-theme-alist))
+  (push (if (functionp form) form (lambda () (eval form t))) (alist-get theme use-theme-enable-theme-alist))
   )
 
 (defvar use-theme-disable-theme-alist nil)
 (defun use-theme-disable-theme-h (theme)
   (dolist (f (alist-get theme use-theme-disable-theme-alist))
     (funcall f)))
-(add-hook 'disable-theme-functions #'use-theme-disable-theme-h -50)
+(add-hook 'disable-theme-functions #'use-theme-disable-theme-h -10)
 
 (defun use-theme-eval-after-disable (theme form)
-  (push (if (functionp form) form (lambda () (eval form))) (alist-get theme use-theme-disable-theme-alist))
+  (push (if (functionp form) form (lambda () (eval form t))) (alist-get theme use-theme-disable-theme-alist))
   )
 
 
@@ -39,6 +39,7 @@
                                 (first-load nil)
                                 (every-load nil)
                                 (first-enable nil)
+                                (first-enable-per-theme nil)
                                 (every-enable nil)
                                 (every-disable nil)
                                 (assert-loads-once nil))
@@ -51,103 +52,121 @@ use a single file or feature for both theme and underlying machinery,
 leaving us no distinct :config to use.
 For other themes, this is usable but consider the ordinary use-package.
 
-:preface             A list of sexps.
-                     Evaluated at expansion time.
-                     Can be used to define functions for use by :defer.
-:theme               Either a theme name, quoted list of theme names, quoted function, or an sexp.
-                     Must be provided if the theme name differs from package.
-                     If an sexp starting with :eval, it will evaluate the second item of the sexp immediately,
-                     expecting a theme name or quoted list of theme names as the result.
-                     Otherwise an sexp is interpreted as a test of the provided variable \"theme\".
-:theme-eval          A form.
-                     Alternative to :theme, specifies an expression that will be evaluated at runtime
-                     to a theme name or list of theme names.
-                     The primary purpose is if the package itself provides a list of themes it provides;
-                     as such, it is evaluated after loading.
-                     Not recommended for long lists, however.
-                     This forces :first-load, so consider very carefully whether that is desirable.
-                     Often, it is better to just list out the themes manually.
-:defer               Any boolean expression.
-                     Unlike use-package, the expression will be evaluated before getting passed
-                     to use-package.
-                     We suggest enabling this, or possibly conditioning it on
-                     whether the theme is unused if appropriate.
-                     Doom Emacs startup behavior seems to be that if the theme is already loaded,
-                     it will just enable it. Combined with :defer t, that can create
-                     slight differences in load behavior and timing.
-:init                A list of sexps.
-                     Same behavior as use-package.
-:setup               A list of sexps.
-                     Run once earliest of any :first-load and :first-enable, depending on what is given.
-                     Theme permitting, we recommend doing typical package config here.
-                     Setup that has effects on the rest of emacs, e.g. defuns and hooks, should definitely go here.
-:config              A list of sexps.
-                     A synonym for :first-load, to match the look of use-package.
-                     For clarity of behavior, we recommend using :first-load instead for themes
-                     not designed for use with use-package.
-                     Do not use both.
-:first-load          A list of sexps.
-                     As the name suggests, runs only the first time the package is loaded,
-                     which is usually the expected and desired behavior of :config.
-                     As with use-package, if not :defer this runs immediately,
-                     so this is a good location when that is desirable.
-                     If a package explicitly says to use :config, that goes here (possibly use the :config synonym).
-                     Otherwise superceded by :setup if one does not strictly need the :first-load timing.
-:every-load          A list of sexps.
-                     Runs every time the package is loaded.
-                     Unless running at enable-time is insufficient, we recommend not using this.
-:first-enable        A list of sexps.
-                     Runs only the first time the theme is enabled.
-                     May be a reasonable alternative to config if that is too early;
-                     from a use-package perspective it is always \"deferred\", and is a good location
-                     where that is desirable.
-                     Note that it is run only once per package, even if multiple themes are provided.
-                     The variable \"theme\" is available to determine which is being enabled.
-:every-enable        A list of sexps.
-                     Runs every time the theme is enabled.
-                     We recommend setting any final face modifications that need to be reapplied here.
-                     As doom's custom-theme-set-faces! already arranges itself to be reapplied,
-                     that should NOT go here (:setup, :first-load, or :first-enable all work).
-                     The variable \"theme\" is available to determine which is being enabled.
-:every-disable       A list of sexps.
-                     Runs every time the theme is disabled.
-                     The variable \"theme\" is available to determine which is being enabled.
-:assert-loads-once   A boolean value.
-                     If true, tells us that the package is such that it will only be loaded once.
-                     This essentially turns this macro into use-package plus the enable/disable-theme hooks.
+:preface                  A list of sexps.
+                          Evaluated at expansion time.
+                          Can be used to define functions for use by :defer.
+:theme                    Either a theme name, quoted list of theme names, quoted function, or an sexp.
+                          Must be provided if the theme name differs from package.
+                          If an sexp starting with :eval, it will evaluate the second item of the sexp immediately,
+                          expecting a theme name or quoted list of theme names as the result.
+                          Otherwise an sexp is interpreted as a test of the provided variable \"theme\".
+:theme-eval               A form.
+                          Alternative to :theme, specifies an expression that will be evaluated at runtime
+                          to a theme name or list of theme names.
+                          The primary purpose is if the package itself provides a list of themes it provides;
+                          as such, it is evaluated after loading.
+                          Not recommended for long lists, however.
+                          This forces :first-load, so consider very carefully whether that is desirable.
+                          Often, it is better to just list out the themes manually.
+:defer                    Any boolean expression.
+                          Unlike use-package, the expression will be evaluated before getting passed
+                          to use-package.
+                          We suggest enabling this, or possibly conditioning it on
+                          whether the theme is unused if appropriate.
+                          Doom Emacs startup behavior seems to be that if the theme is already loaded,
+                          it will just enable it. Combined with :defer t, that can create
+                          slight differences in load behavior and timing.
+:init                     A list of sexps.
+                          Same behavior as use-package.
+:setup                    A list of sexps.
+                          Run once earliest of any :first-load and :first-enable, depending on what is given.
+                          Theme permitting, we recommend doing typical package config here.
+                          Setup that has effects on the rest of emacs, e.g. defuns and hooks, should definitely go here.
+:config                   A list of sexps.
+                          A synonym for :first-load, to match the look of use-package.
+                          For clarity of behavior, we recommend using :first-load instead for themes
+                          not designed for use with use-package.
+                          Do not use both.
+:first-load               A list of sexps.
+                          As the name suggests, runs only the first time the package is loaded,
+                          which is usually the expected and desired behavior of :config.
+                          As with use-package, if not :defer this runs immediately,
+                          so this is a good location when that is desirable.
+                          If a package explicitly says to use :config, that goes here (possibly use the :config synonym).
+                          Otherwise superceded by :setup if one does not strictly need the :first-load timing.
+:every-load               A list of sexps.
+                          Runs every time the package is loaded.
+                          Unless running at enable-time is insufficient, we recommend not using this.
+:first-enable             A list of sexps.
+                          Runs only the first time the theme is enabled.
+                          May be a reasonable alternative to config if that is too early;
+                          from a use-package perspective it is always \"deferred\", and is a good location
+                          where that is desirable.
+                          Note that it is run only once per package, even if multiple themes are provided.
+                          The variable \"theme\" is available to determine which is being enabled.
+:first-enable-per-theme   A list of sexps.
+                          Like :first-enable, but is run per-theme instead of per-package.
+                          This is probably the best place to use doom's custom-theme-set-faces!.
+                          The variable \"theme\" is available to determine which is being enabled.
+:every-enable             A list of sexps.
+                          Runs every time the theme is enabled.
+                          We recommend setting any final face modifications that need to be reapplied here.
+                          As doom's custom-theme-set-faces! already arranges itself to be reapplied,
+                          that should NOT go here (:first-enable-per-theme is recommended).
+                          The variable \"theme\" is available to determine which is being enabled.
+:every-disable            A list of sexps.
+                          Runs every time the theme is disabled.
+                          The variable \"theme\" is available to determine which is being disabled.
+:assert-loads-once        A boolean value.
+                          If true, tells us that the package is such that it will only be loaded once.
+                          This essentially turns this macro into use-package plus the enable/disable-theme hooks.
 "
   (declare (indent 1))
   (when preface
-    (eval (macroexp-progn preface))
+    (eval (macroexp-progn preface) t)
     )
   (when config
     (setq first-load config))
   (let* ((themes (cond
+                  (nil package)
                   ((symbolp theme) (list theme))
                   ((listp theme)
                    (cond
                     ((eq (car theme) 'quote) (ensure-list (cadr theme)))
                     ((eq (car theme) 'function) nil)
-                    ((eq (car theme) ':eval) (ensure-list (eval (cadr theme))))
+                    ((eq (car theme) ':eval) (ensure-list (eval (cadr theme) t)))
                     (t nil)))
                   (theme-eval nil)
-                  (t package)))
+                  (t nil)))
          (theme-eval (when theme-eval `(ensure-list ,theme-eval)))
          (theme-test (cond
                       (themes nil)
                       ((and (listp theme) (eq (car theme) 'function)) `(funcall ,theme theme))
                       (theme-eval `(memq theme ,theme-eval))
                       (t theme)))
-         (defer (when defer (eval defer)))
-         (assert-loads-once (eval assert-loads-once))
+         (defer (when defer (eval defer t)))
+         (assert-loads-once (eval assert-loads-once t))
          ;; If using theme-eval, we must configure hooks during :first-load.
-         (configure-hooks-in-load (and (or (length> themes 1) theme-eval) (or setup first-enable every-enable every-disable)))
+         (configure-hooks-in-load (and (or (length> themes 1) theme-eval)
+                                       (or setup first-enable first-enable-per-theme every-enable every-disable)))
          (setup-in-load (or (not defer) assert-loads-once first-load every-load configure-hooks-in-load))
          configure-hooks theme-enabled-sym package-configured-sym
          )
     (if setup-in-load
         (setq first-load (or (append setup first-load) '(nil)))
       (setq first-enable (append setup first-enable))
+      )
+
+    (when first-enable-per-theme
+      (if (length= themes 1)
+          (setq first-enable (append first-enable first-enable-per-theme))
+        (push
+         `(unless (memq ',package (get theme 'use-theme--enabled))
+            (push ',package (get theme 'use-theme--enabled))
+            ,@first-enable-per-theme
+            )
+         every-enable))
+      (setq first-enable-per-theme nil)
       )
 
     (setq theme-enabled-sym (when first-enable (intern (concat "use-theme--" (symbol-name package) "--enabled"))))
@@ -183,7 +202,7 @@ For other themes, this is usable but consider the ordinary use-package.
                                         (when ,theme-test
                                           ,@enable-h)
                                         )
-                                      (add-hook 'enable-theme-functions #',enable-h-sym -50))
+                                      (add-hook 'enable-theme-functions #',enable-h-sym -10))
                                     )
                                    ((length= themes 1)
                                     `((use-theme-eval-after-enable ',(car themes) (lambda () (let ((theme ',(car themes))) ,@enable-h))))
@@ -217,8 +236,8 @@ For other themes, this is usable but consider the ordinary use-package.
                                     `(
                                       (defun ,disable-h-sym (theme)
                                          (when ,theme-test
-                                           @,every-disable))
-                                      (add-hook 'disable-theme-functions #',disable-h-sym -50))
+                                           ,@every-disable))
+                                      (add-hook 'disable-theme-functions #',disable-h-sym -10))
                                     )
                                    ((length= themes 1)
                                     `((use-theme-eval-after-disable ',(car themes) (lambda () (let ((theme ',(car themes))) ,@every-disable))))
@@ -243,13 +262,14 @@ For other themes, this is usable but consider the ordinary use-package.
       (setq first-load nil))
 
     `(use-package ,package
+       ,@(when preface `(:preface ,@preface))
        ,@(when defer `(:defer ,defer))
        ,@(when (or init first-load first-enable)
            (remq
             nil
             `(:init
-              ,(when (and first-load defer) `(setq ,package-configured-sym nil))
-              ,(when first-enable `(setq ,theme-enabled-sym nil))
+              ,(when (and first-load defer) `(defvar ,package-configured-sym nil))
+              ,(when first-enable `(defvar ,theme-enabled-sym nil))
               ,@init
               )))
        ,@(when (or first-load every-load)
@@ -265,9 +285,8 @@ For other themes, this is usable but consider the ordinary use-package.
                   ,@every-load)
               `(:config
                 ,@first-load
-                ,@every-load
                 ,(when every-load
-                   `(eval-after-load ,package ,every-load)
+                   `(eval-after-load ',package (lambda () ,@every-load))
                    )
                 ))))
        )))
