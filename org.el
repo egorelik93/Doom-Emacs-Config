@@ -171,44 +171,18 @@ Does not fire on single-letter words or on the argument of a \\command."
                    ""
                    :immediate-finish t)))
 
-  ;; The following utilities are based on code from vulpea,
-  ;; in particular the blog series on scaling agenda.
 
-  (defvar my/org-automate-directories nil
-    "Directories that org automation utilities should include.
-If using vulpea, probably will want to set this to vulpea-db-sync-directories.")
-
-  (defun my/org-automate-buffer-p ()
-    "Return non-nil if the currently visited buffer should accept automation."
-    (or (member "my/org-automate" (org-get-tags))
-        (when-let* ((file (buffer-file-name))
-                    (dirs (bound-and-true-p my/org-automate-directories)))
-          (let ((file (expand-file-name file)))
-            (seq-some
-             (lambda (dir)
-               (string-prefix-p
-                (file-name-as-directory (expand-file-name dir))
-                file))
-             dirs
-             ))))
-    ;;(and buffer-file-name
-    ;;     (string-prefix-p
-    ;;      (expand-file-name (file-name-as-directory org-roam-directory))
-    ;;      (file-name-directory buffer-file-name)))
-    )
-
-  (defvar my/org-automate-file-update-hook nil)
-  (defun my/org-automate-file-update ()
-    (when (and (not (active-minibuffer-window))
-               (my/org-automate-buffer-p))
-      (run-hooks 'my/org-automate-file-update-hook)
+  (when (modulep! :lang org +roam)
+    ;; May not need this anymore if using vulpea v2
+    (defun my/org-roam-buffer-tags-get ()
+      (let ((node (org-roam-node-at-point)))
+        (if (org-roam-node-p node)
+            (org-roam-node-tags node)
+          nil)
+        )
       ))
 
-  (add-hook 'org-mode-hook (defun my/install-org-automate-file-update-hook ()
-                             (when my/org-automate-directories
-                               (add-hook 'find-file-hook #'my/org-automate-file-update nil t)
-                               (add-hook 'before-save-hook #'my/org-automate-file-update nil t)
-                               )))
+  (add-hook 'org-mode-hook #'org-automate-mode)
 
   (defun my/org-chronological-add-dates ()
     "Add dates to headers in chronological buffers."
@@ -225,9 +199,9 @@ If using vulpea, probably will want to set this to vulpea-db-sync-directories.")
                                  (format-time-string "[%Y-%m-%d %a %H:%M]"))
                )
              ))))))
-  (add-hook 'my/org-automate-file-update-hook #'my/org-chronological-add-dates)
+  (add-hook 'org-automate-file-update-hook #'my/org-chronological-add-dates)
 
-  (when (and (modulep! :lang org +roam) (modulep! :tools vulpea))
+  (when (and (modulep! :lang org) (modulep! :tools vulpea))
     ; Modified from https://www.d12frosted.io/posts/2021-01-16-task-management-with-roam-vol5
 
     (defun my/vulpea-todo-p ()
@@ -236,24 +210,22 @@ If using vulpea, probably will want to set this to vulpea-db-sync-directories.")
 TODO entries marked as done are ignored, meaning the this
 function returns nil if current buffer contains only completed
 tasks."
-      (seq-find                                 ; (3)
-       (lambda (type)
-         (eq type 'todo))
-       (org-element-map                         ; (2)
-           (org-element-parse-buffer 'headline) ; (1)
-           'headline
-         (lambda (h)
-           (org-element-property :todo-type h)))))
+      (when
+          ;; Based on vulpea-auto-tag
+          (save-excursion
+            (goto-char (point-min))
+            (let (case-fold-search)
+              (re-search-forward "\\* \\(TODO\\|WAIT\\|STARTED\\|CYCLIC\\|PROJ\\|SOMEDAY\\)" nil t)))
+        (seq-find                                 ; (3)
+         (lambda (type)
+           (eq type 'todo))
+         (org-element-map                         ; (2)
+             (org-element-parse-buffer 'headline) ; (1)
+             'headline
+           (lambda (h)
+             (org-element-property :todo-type h))))))
 
-    ; May not need this anymore if using vulpea v2
-    (defun my/org-roam-buffer-tags-get ()
-      (let ((node (org-roam-node-at-point)))
-        (if (org-roam-node-p node)
-            (org-roam-node-tags node)
-          nil)
-        )
-      )
-
+    (require 'org-automate)
     (defvar my/vulpea-todo-update-hook)
 
     (defun my/vulpea-todo-update-tag ()
@@ -301,7 +273,7 @@ tasks."
       "Update the value of `org-agenda-files'."
       (setq org-agenda-files (my/vulpea-todo-files)))
 
-    (add-hook 'my/org-automate-file-update-hook #'my/vulpea-todo-update-tag)
+    (add-hook 'org-automate-file-update-hook #'my/vulpea-todo-update-tag)
 
     (advice-add 'org-agenda :before #'my/vulpea-agenda-files-update)
     (advice-add 'org-todo-list :before #'my/vulpea-agenda-files-update)
@@ -430,7 +402,7 @@ Skips the write when called non-interactively and nothing has changed."
               (lambda ()
                 (add-hook 'after-save-hook
                           (lambda ()
-                            (when (and (my/org-automate-buffer-p)
+                            (when (and (org-automate-buffer-p)
                                        (let ((tags (vulpea-buffer-tags-get t)))
                                          (and (member "todo" tags)
                                               (not (member my/vulpea-aggregate-exclude-tag tags)))))
