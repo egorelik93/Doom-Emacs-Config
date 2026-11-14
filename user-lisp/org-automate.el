@@ -36,7 +36,7 @@ If using vulpea, probably will want to set this to vulpea-db-sync-directories.")
     ))
 
 
-
+;;;###autoload
 (define-minor-mode org-automate-mode
   "Run automation based on org mode."
   :lighter nil

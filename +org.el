@@ -179,7 +179,8 @@ Does not fire on single-letter words or on the argument of a \\command."
         )
       ))
 
-  (add-hook 'org-mode-hook #'org-automate-mode)
+  (when (bound-and-true-p org-automate-directories)
+    (add-hook 'org-mode-hook #'org-automate-mode))
 
   (defun my/org-chronological-add-dates ()
     "Add dates to headers in chronological buffers."
@@ -222,7 +223,6 @@ tasks."
            (lambda (h)
              (org-element-property :todo-type h))))))
 
-    (require 'org-automate)
     (defvar my/vulpea-todo-update-hook)
 
     (defun my/vulpea-todo-update-tag ()
