@@ -41,6 +41,10 @@ In case of failure, fail gracefully."
   :config
   (consult-vulpea-mode 1))
 
+(use-package! vulpea-ui
+  :after vulpea
+  )
+
 (map! :leader :prefix "n" "v" nil)
 (map! :leader
       (:prefix ("n" . "notes")
@@ -51,4 +55,7 @@ In case of failure, fail gracefully."
         :desc "Propagate title change" "p" #'vulpea-propagate-title-change
         :desc "Rename tag everywhere"  "r" #'vulpea-tags-batch-rename
         :desc "Full scan"              "s" #'vulpea-db-sync-full-scan
-        :desc "Doctor"                 "d" #'vulpea-doctor)))
+        :desc "Doctor"                 "d" #'vulpea-doctor
+        :desc "Toggle vulpea UI"       "u" #'vulpea-ui-sidebar-toggle
+        :desc "Launch vulpea UI"       "U" #'vulpea-ui-sidebar-open
+        )))
