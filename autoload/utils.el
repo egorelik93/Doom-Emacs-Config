@@ -1,4 +1,4 @@
-;;; $DOOMDIR/autoload.el -*- lexical-binding: t; -*-
+;;; $DOOMDIR/autoload/utils.el -*- lexical-binding: t; -*-
 
 ;; Originally created for use by my/org-latex-preview-all in org.el
 ;; Created by Claude

@@ -121,6 +121,7 @@ continues to function despite using a dynamic list of modules."
                '((evil +everywhere))
              '(evil)))
        ;(evil +everywhere); come to the dark side, we have cookies
+       my-modal
        file-templates    ; auto-snippets for empty files
        fold              ; (nigh) universal code folding
        ;;(format +onsave)  ; automated prettiness
@@ -295,6 +296,14 @@ continues to function despite using a dynamic list of modules."
        :lang
        ;;org-pretty          ; stop org fontifying markup inside code/verbatim
 
+       ;; Potentially useful modules to enable here:
+       ;;
+       ;; :tools
+       ;; vulpea
+       ;;
+       ;; :email
+       ;; my-gnus
+       ;;
        ,@(my-modules-get-replacement my-modules-local-user t t)
        ))
 

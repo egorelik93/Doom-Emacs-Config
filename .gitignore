@@ -4,7 +4,8 @@ local-font-config.el
 debug-adapters
 *.local.el
 local/
-*.elc
+*.elc*
 all-bindings.el
 upstream-hash.eld
 .user-lisp-autoloads.el
+custom.el

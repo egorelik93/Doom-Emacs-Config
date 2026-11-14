@@ -1,4 +1,4 @@
-;;; gnus.el -*- lexical-binding: t; -*-
+;;; modules/email/gnus/config.el -*- lexical-binding: t; -*-
 
 ;; Preferences for GNUS.
 ;; Do not put server configuration details in here;

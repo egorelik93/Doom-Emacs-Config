@@ -75,60 +75,10 @@ are open."
 
 
 (add-load-path! "user-lisp")
-
-
-; Compenstates for cursor functionality assumed in this file
-(unless (modulep! :editor evil)
-  ; Copied from evil-core.el
-
-  (defun evil-set-cursor-color (color)
-    "Set the cursor color to COLOR."
-    (unless (equal (frame-parameter nil 'cursor-color) color)
-      ;; `set-cursor-color' forces a redisplay, so only
-      ;; call it when the color actually changes
-      (set-cursor-color color)))
-
-  ; Copied from doom evil module
-
-  ;; We want to update the colors after a new theme has been enabled, but this
-  ;; is tricky: whenever a cursor color is applied, Emacs will automatically
-  ;; change the 'cursor face accordingly to keep it in sync. As a result, we
-  ;; read and store the new theme colors as early as possible, and in particular
-  ;; before evil performs its next cursor refresh.
-  (add-hook! '(doom-load-theme-hook doom-after-modules-config-hook) :depth -100
-    (defun +evil-update-cursor-color-h ()
-      ;; Use a flashy color for emacs state.
-      (put 'cursor 'evil-emacs-color  (face-foreground 'warning))
-      (put 'cursor 'evil-normal-color (face-background 'cursor))))
-  (defun +evil-default-cursor-fn ()
-    (evil-set-cursor-color (get 'cursor 'evil-normal-color)))
-  (defun +evil-emacs-cursor-fn ()
-    (evil-set-cursor-color (get 'cursor 'evil-emacs-color)))
-
-  (defun evil-set-cursor (specs)
-  "Change the cursor's apperance according to SPECS.
-SPECS may be a cursor type as per `cursor-type', a color
-string as passed to `set-cursor-color', a zero-argument
-function for changing the cursor, or a list of the above.
-
-If SPECS is nil, this function does not have an effect;
-pass (list nil) instead to indicate a nil `cursor-type'
-\(i.e., to disable the cursor)."
-  (unless (and (not (functionp specs))
-               (listp specs)
-               (null (cdr-safe (last specs))))
-    (setq specs (list specs)))
-  (dolist (spec specs)
-    (cond
-     ((functionp spec)
-      (ignore-errors (funcall spec)))
-     ((stringp spec)
-      (evil-set-cursor-color spec))
-     (t
-      (setq cursor-type spec)))))
-
-  (setq evil-state 'emacs)
-  (defun evil-emacs-state-p () t)
+(when (file-exists-p! ".user-lisp-autoloads.el" (concat doom-user-dir "user-lisp"))
+  ;; In theory, this is after $EMACSDIR/user-lisp/.user-lisp-autoloads.el
+  ;; would have been required, which this would otherwise disrupt.
+  (load! ".user-lisp-autoloads.el" (concat doom-user-dir "user-lisp"))
   )
 
 
@@ -169,7 +119,7 @@ pass (list nil) instead to indicate a nil `cursor-type'
 (setq doom-theme 'my-doom-batppuccin-macchiato)
 
 
-(load! "themes")
+(load! "+themes")
 
 
 ;; If you use `org' and don't want your org files in the default location below,
@@ -371,7 +321,7 @@ mapping will always be the ESC prefix map."
     (speedrect-mode))
 
 
-(load! "modal")
+(load! "+modal")
 
 
 (after! undo-tree
@@ -814,9 +764,12 @@ mapping will always be the ESC prefix map."
   (remove-hook 'doom-init-ui-hook #'+dashboard-init-h)
 )
 
-(load! "ediff-layout")
+(after! ediff
+  (setq ediff-window-setup-function 'my/ediff-setup-windows-plain)
+  ;(setq ediff-merge-split-window-function 'split-window-vertically)
+)
 
-(load! "lang")
+(load! "+lang")
 
 (setq which-key-show-transient-maps t)
 
@@ -1255,8 +1208,6 @@ are served via wsl.localhost using `my/wsl-distro-name'."
                     (apply orig-fun args)
                   (error nil))))
   )
-
-(load! "gnus")
 
 
 

@@ -1,81 +1,58 @@
-;;; modal.el -*- lexical-binding: t; -*-
+;;; modules/editor/my-modal/config.el -*- lexical-binding: t; -*-
 
-; Created by Claude
-;
-; Works for visual modes, but now doesn't seem to work for text object commands.
-; Replaced with mapping directly to a (combined) normal state keymap.
-(defun my-evil-execute-in-normal-state ()
-  "Execute a command in normal state, with special handling for visual modes.
- If the command enters visual or visual-block mode, call those commands
- directly to preserve proper state transitions."
-  (interactive)
-  (let ((original-state evil-state))
-     ;; Temporarily switch to normal state
-     (evil-normal-state)
+; Compenstates for cursor functionality assumed in this file
+(unless (modulep! :editor evil)
+  ; Copied from evil-core.el
 
-     ;; Set the next state to return to after the command
-     (setq evil-next-state original-state)
+  (defun evil-set-cursor-color (color)
+    "Set the cursor color to COLOR."
+    (unless (equal (frame-parameter nil 'cursor-color) color)
+      ;; `set-cursor-color' forces a redisplay, so only
+      ;; call it when the color actually changes
+      (set-cursor-color color)))
 
-     ;; Read the key sequence
-     (let* ((keys (read-key-sequence nil))
-            (cmd (key-binding keys)))
+  ; Copied from doom evil module
 
-       ;; Debug message
-       ; (message "Keys: %s, Command: %s" keys cmd)
+  ;; We want to update the colors after a new theme has been enabled, but this
+  ;; is tricky: whenever a cursor color is applied, Emacs will automatically
+  ;; change the 'cursor face accordingly to keep it in sync. As a result, we
+  ;; read and store the new theme colors as early as possible, and in particular
+  ;; before evil performs its next cursor refresh.
+  (add-hook! '(doom-load-theme-hook doom-after-modules-config-hook) :depth -100
+    (defun +evil-update-cursor-color-h ()
+      ;; Use a flashy color for emacs state.
+      (put 'cursor 'evil-emacs-color  (face-foreground 'warning))
+      (put 'cursor 'evil-normal-color (face-background 'cursor))))
+  (defun +evil-default-cursor-fn ()
+    (evil-set-cursor-color (get 'cursor 'evil-normal-color)))
+  (defun +evil-emacs-cursor-fn ()
+    (evil-set-cursor-color (get 'cursor 'evil-emacs-color)))
 
-       ;; Check if this is a visual mode command
-       (cond
-        ;; Visual mode commands - call them directly from original state
-        ((or (memq cmd '(evil-visual-char evil-visual-line evil-visual-block))
-             (and (symbolp cmd)
-                  (string-match-p "evil-visual" (symbol-name cmd))))
-         ;; Return to original state first
-         (funcall (intern (format "evil-%s-state" original-state)))
-         ;; For visual block, it neds to be enteres specially,
-         (if (eq cmd 'evil-visual-block)
-             (evil-visual-state 'block)
-           ;; Now call the visual command - it will handle state transition
-           (call-interactively cmd)))
+  (defun evil-set-cursor (specs)
+  "Change the cursor's apperance according to SPECS.
+SPECS may be a cursor type as per `cursor-type', a color
+string as passed to `set-cursor-color', a zero-argument
+function for changing the cursor, or a list of the above.
 
-        ;; For all other commands, execute in normal state and return
-        (cmd
-         (funcall (intern (format "evil-%s-state" original-state)))
-         (evil-execute-in-normal-state)
-         (funcall cmd)
-         )
+If SPECS is nil, this function does not have an effect;
+pass (list nil) instead to indicate a nil `cursor-type'
+\(i.e., to disable the cursor)."
+  (unless (and (not (functionp specs))
+               (listp specs)
+               (null (cdr-safe (last specs))))
+    (setq specs (list specs)))
+  (dolist (spec specs)
+    (cond
+     ((functionp spec)
+      (ignore-errors (funcall spec)))
+     ((stringp spec)
+      (evil-set-cursor-color spec))
+     (t
+      (setq cursor-type spec)))))
 
-        (t
-         (execute-kbd-macro keys)
-         ;; If we're still in normal state (didn't enter visual mode),
-         ;; return to original state
-         (when (eq evil-state 'normal)
-           (funcall (intern (format "evil-%s-state" original-state)))
-           ; Some versions had this, others didn't
-           (setq evil-next-state nil)
-           ))))))
-
-
-;(map! :map evil-emacs-state-map "M-o" #'my-evil-execute-in-normal-state)
-;(map! :map evil-emacs-state-map "<Launch5>" #'my-evil-execute-in-normal-state)
-;(map! :map evil-emacs-state-map "<f14>" #'my-evil-execute-in-normal-state)
-
-
-(defun evil-exit-emacs-state-unless-god ()
-  (interactive)
-  (if (bound-and-true-p god-local-mode) (god-local-mode 0) (evil-exit-emacs-state)))
-
-; I like the idea, but other than hjkl I just can't get
-; used to the commands.
-(map! :after evil
-      ; :e ctl-tap-wsl #'evil-exit-emacs-state-unless-god
-      ; :e ctl-tap #'evil-exit-emacs-state-unless-god
-      :nm ctl-tap-wsl #'evil-emacs-state
-      :nm ctl-tap #'evil-emacs-state
-      :nm ctl-dbl-tap-wsl #'evil-emacs-state
-      :nm ctl-dbl-tap #'evil-emacs-state
-      :viro ctl-tap-wsl #'evil-escape
-      :viro ctl-tap #'evil-escape
-      )
+  (setq evil-state 'emacs)
+  (defun evil-emacs-state-p () t)
+  )
 
 
 (defun update-evil-emacs-cursor ()
@@ -242,10 +219,6 @@
         ; discourage use while in termimal
         )
 
-  (map! :e ctl-tap #'boon-set-command-state)
-  (map! :map 'boon-command-map ctl-tap #'boon-set-insert-like-state)
-  (map! :map 'boon-command-map ctl-dbl-tap #'boon-set-insert-like-state)
-
   (when (boundp '+dashboard-mode-map)
     (defvar +dashboard-mode-boon-map (make-boon-map '+dashboard-mode 'command +dashboard-mode-map))
     (defvar +dashboard-mode-boon-special-map (make-boon-map '+dashboard-mode 'special +dashboard-mode-map))
@@ -253,11 +226,6 @@
     (map! :map (+dashboard-mode-boon-map +dashboard-mode-boon-special-map)
           "i" #'+dashboard/backward-button
           "k" #'+dashboard/forward-button))
-
-  (map! :leader :desc "boon" alt-tap boon-command-map)
-  (unless (modulep! :editor evil)
-    (map! :e "M-o" boon-command-map)
-    )
 
   ; I am not using evil mode much; more convenient for C-z to be boon when I only
   ; have a laptop keyboard.
@@ -375,22 +343,13 @@
          "k" #'evil-previous-line
          "h" #'evil-backward-char
          "l" #'evil-forward-char)
-        ; Doesn't seem to override other custom shortcuts
-        ; Make sure to configure taps in other maps to not change the evil state if in god mode.
-        :g ctl-dbl-tap-wsl #'god-local-mode
-        :g ctl-dbl-tap #'god-local-mode
-        :g ctl-tap-wsl #'god-local-mode
-        :g ctl-tap #'god-local-mode
-        ; Normally would be used to switch evil states, which we don't want from here.
-        ; Instead, let's use it to get back the lost kill-line.
-        "z" #'kill-line
+         ; Normally would be used to switch evil states, which we don't want from here.
+         ; Instead, let's use it to get back the lost kill-line.
+         "z" #'kill-line
         )
 
   (after! which-key
     (which-key-enable-god-mode-support)))
-
-(map! :e ctl-dbl-tap-wsl #'god-local-mode
-      :e ctl-dbl-tap #'god-local-mode)
 
 (defun +set-cursor-color (color)
   (unless (eq color (frame-parameter nil 'cursor-color))
@@ -416,7 +375,7 @@
           ((bound-and-true-p boon-special-state) (evil-set-cursor-color boon-special-cursor-color))
           ((bound-and-true-p boon-command-state) (+evil-default-cursor-fn))
           (t (+evil-emacs-cursor-fn)))
-  ))
+    ))
 
 
 (after! evil

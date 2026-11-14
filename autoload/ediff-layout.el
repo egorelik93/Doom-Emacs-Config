@@ -1,10 +1,6 @@
-;;; ediff-layout.el -*- lexical-binding: t; -*-
+;;; $DOOMDIR/autoload/ediff-layout.el -*- lexical-binding: t; no-byte-compile: t; no-native-compile: t; -*-
 
-(after! ediff
-  (setq ediff-window-setup-function 'my/ediff-setup-windows-plain)
-  ;(setq ediff-merge-split-window-function 'split-window-vertically)
-)
-
+;;;###autoload
 (defun my/ediff-setup-windows-plain (buf-A buf-B buf-C control-buffer)
   (if (and ediff-show-ancestor (with-current-buffer control-buffer
                                  ediff-merge-with-ancestor-job)) ; with-Ancestor-p)
