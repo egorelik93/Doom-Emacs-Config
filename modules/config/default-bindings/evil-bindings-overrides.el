@@ -3,7 +3,7 @@
 ; Modified from config/default/+evil-bindings.el.
 
 (unless (modulep! evil)
-  (load! "no-evil-windows"))
+  (require 'my-no-evil-windows))
 
 ;;
 ;;; Global keybindings

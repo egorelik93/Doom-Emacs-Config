@@ -45,7 +45,7 @@
 
 (unless my-enable-evil
   (add-hook! 'doom-after-sync-hook
-    (my-compile-doomdir-elisp "no-evil-windows.el" (dir!))
+    ;;(my-compile-doomdir-elisp "no-evil-windows.el" (dir!))
     (print! "> Combining keybindings ...")
     (apply #'my/combine-and-expand (expand-file-name "all-bindings.el" (dir!)) (my-keybindings-files))
     (when (not (bound-and-true-p my-log-evil-keybinds))

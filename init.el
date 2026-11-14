@@ -353,6 +353,31 @@ continues to function despite using a dynamic list of modules."
      )))
 
 
+(defun my/dir-fingerprint (dir)
+  "Newest mtime among DIR's files, as a float, ignoring .git."
+  (let ((files (directory-files-recursively
+                dir "\\.el\\'" nil
+                (lambda (d) (not (string-match-p "/\\.git\\'" d))))))
+    (if files
+        (apply #'max (mapcar (lambda (f)
+                               (float-time (file-attribute-modification-time
+                                            (file-attributes f))))
+                             files))
+      0)))
+
+(cl-defmacro local-package! (package &key (local-repo nil) (files nil))
+  `(let ((fingerprint (my/dir-fingerprint (expand-file-name ,local-repo (dir!)))))
+     (package! ,package
+       :type 'local
+       :recipe (
+                :local-repo ,local-repo
+                ,@(when files `((:files ,files)))
+                :build t)
+       :env (list (cons 'my-fingerprint fingerprint)))
+    )
+)
+
+
 
 
 ; Must be at end of file

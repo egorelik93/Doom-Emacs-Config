@@ -463,3 +463,6 @@ index."
   (if arg
       (tab-bar-select-tab arg)
     (tab-bar-switch-to-next-tab)))
+
+
+(provide 'my-no-evil-windows)
