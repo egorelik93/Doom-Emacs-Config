@@ -114,6 +114,13 @@
   (package! msgpack)
   (package! tramp-rpc :recipe (:host github :repo "ArthurHeymans/emacs-tramp-rpc" :files ("lisp/*.el"))))
 
+;; Get a basic git commit experience even without magit
+(unless (modulep! :tools magit)
+  ;; Unfortunately, git-commit cannot be installed without the full magit,
+  ;; but at least we don't have to load all of it.
+  (package! magit)
+  )
+
 
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)

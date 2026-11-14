@@ -791,6 +791,22 @@ mapping will always be the ESC prefix map."
 ;  :config
 ;  (setq auto-mode-alist (rassq-delete-all 'git-rebase-mode auto-mode-alist)))
 
+(unless (modulep! :tools magit)
+  (use-package! git-commit
+    ;; Suggested by Google
+    :mode ("COMMIT_EDITMSG\\'" . global-git-commit-mode)
+    :config
+    ;; From doom's magit module
+
+    (set-yas-minor-mode! 'git-commit-mode)
+
+    ;; Enforce git commit conventions.
+    ;; See https://chris.beams.io/posts/git-commit/
+    (setq git-commit-summary-max-length 50
+          git-commit-style-convention-checks '(overlong-summary-line non-empty-second-line))
+    (setq-hook! 'git-commit-mode-hook fill-column 72)
+  ))
+
 (when (cl-some (lambda (arg)
            (string-match-p "ediff" arg))
          command-line-args)
