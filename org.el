@@ -92,9 +92,6 @@ you're done. This can be called from an external script on Windows."
      (texmathp)))
 )
 
-;; Among other things, sets org-hide-emphasis-markers to t.
-(add-hook 'org-mode-hook #'+org-pretty-mode)
-
 (after! org
   ; Taken from doom org module;
   ; since it uses evil-org-mode package,
