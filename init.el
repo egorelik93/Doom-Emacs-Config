@@ -332,6 +332,12 @@ continues to function despite using a dynamic list of modules."
      )))
 
 
+;; A new optimization in Emacs 31, seems to shave of varying amounts of
+;; load time.
+(when (boundp 'load-path-filter-function)
+  (setq load-path-filter-function #'load-path-filter-cache-directory-files))
+
+
 
 
 ; Must be at end of file
