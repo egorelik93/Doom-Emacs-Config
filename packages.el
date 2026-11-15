@@ -108,6 +108,8 @@
   (package! magit)
   )
 
+(package! benchmark-init)
+
 
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)
