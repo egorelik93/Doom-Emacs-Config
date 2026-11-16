@@ -16,15 +16,20 @@
 ;;     marker.  This alone fixes the rescan everywhere, keywords included.
 ;;  2. Veto a candidate the parser places inside an opaque object.  The
 ;;     parser is only consulted when the surrounding text contains an
-;;     opaque object the skip cannot handle (src_, call_, @@), so ordinary
+;;     opaque object the skip cannot handle (src_, call_, @@, LaTeX), so ordinary
 ;;     text never touches it, and even then it bypasses the element cache.
 ;; Otherwise it behaves exactly like stock Org.  Toggle it with
 ;; `my/org-emphasis-mode' (off by default).
 (defconst my/org-emphasis-opaque-types
-  '(code verbatim inline-src-block inline-babel-call export-snippet)
+  '(code verbatim inline-src-block inline-babel-call export-snippet
+    latex-fragment latex-environment)
   "Object types whose contents are never parsed for markup.")
 
-(defconst my/org-emphasis--opaque-hint-re "src_\\|call_\\|@@"
+(defconst my/org-emphasis--opaque-hint-re
+  (concat "src_\\|call_\\|@@"
+          ;; LaTeX: $ and $$, \( and \[, \name{ and \name[ (fragments
+          ;; and \begin{...} environments).
+          "\\|\\$\\|\\\\\\(?:[([]\\|[a-zA-Z]+[[{]\\)")
   "Text that must be present nearby for the parser check to be worth running.
 Covers the opaque objects other than code and verbatim, which the skip
 in `my/org-do-emphasis-faces' already handles.")
@@ -288,8 +293,9 @@ other than the one the match itself describes.  Match data must be from
   "Keep Org emphasis fontification out of opaque objects.
 Replaces `org-do-emphasis-faces' with `my/org-do-emphasis-faces', which
 does not fontify markup inside ~code~, =verbatim=, src_lang{...},
-call_...() or @@...@@.  Refuses to turn on, with a warning, unless the
-upstream function still matches the one the copy was made from.
+call_...(), @@...@@ or LaTeX fragments and environments.  Refuses to
+turn on, with a warning, unless the upstream function still matches the
+one the copy was made from.
 
 Off by default; to turn it on at startup, use
   (after! org (my/org-emphasis-mode +1))"
