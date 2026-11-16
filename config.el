@@ -742,12 +742,10 @@ mapping will always be the ESC prefix map."
 ;  (setq auto-mode-alist (rassq-delete-all 'git-rebase-mode auto-mode-alist)))
 
 (unless (modulep! :tools magit)
+  ;; From doom's magit module
   (use-package! git-commit
-    ;; Suggested by Google
-    :mode ("COMMIT_EDITMSG\\'" . global-git-commit-mode)
+    :hook (doom-first-file . global-git-commit-mode)
     :config
-    ;; From doom's magit module
-
     (set-yas-minor-mode! 'git-commit-mode)
 
     ;; Enforce git commit conventions.
@@ -755,7 +753,11 @@ mapping will always be the ESC prefix map."
     (setq git-commit-summary-max-length 50
           git-commit-style-convention-checks '(overlong-summary-line non-empty-second-line))
     (setq-hook! 'git-commit-mode-hook fill-column 72)
-  ))
+    ))
+;; Either way, doom enabling global-git-commit-mode in doom-first-file
+;; means it misses the first file.
+(add-hook 'global-git-commit-mode-hook #'git-commit-setup-check-buffer)
+
 
 (when (cl-some (lambda (arg)
            (string-match-p "ediff" arg))
