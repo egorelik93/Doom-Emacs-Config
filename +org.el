@@ -481,10 +481,6 @@ zero-width space is removed. The org backend is left untouched."
     ; zoom, on the other hand, seems too small on some machines but not others.
     ;(plist-put org-latex-preview-appearance-options
     ;           :zoom 1.25)
-    ; While transparent seems better, I have seen it cause some diagrams to
-    ; inexplicably have a black foreground, which is hard to read.
-    (plist-put org-latex-preview-appearance-options
-               :background 'auto)
 
     ;; ;; Use dvisvgm to generate previews
     ;; ;; You don't need this, it's the default:
