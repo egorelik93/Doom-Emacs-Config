@@ -473,16 +473,16 @@ zero-width space is removed. The org backend is left untouched."
     ;; Increase preview width
     (plist-put org-latex-preview-appearance-options
                :page-width nil)
-                                        ; Not sure if this is true for all machines,
-                                        ; but in the environments I have tried this on, the scale is too big.
-                                        ; It no longer seems to have effect on those machines, but leaving the preference.
+    ; Not sure if this is true for all machines,
+    ; but in the environments I have tried this on, the scale is too big.
+    ; It no longer seems to have effect on those machines, but leaving the preference.
     (plist-put org-latex-preview-appearance-options
                :scale 0.5)
-                                        ; zoom, on the other hand, seems too small on some machines but not others.
-                                        ;(plist-put org-latex-preview-appearance-options
-                                        ;           :zoom 1.25)
-                                        ; While transparent seems better, I have seen it cause some diagrams to
-                                        ; inexplicably have a black foreground, which is hard to read.
+    ; zoom, on the other hand, seems too small on some machines but not others.
+    ;(plist-put org-latex-preview-appearance-options
+    ;           :zoom 1.25)
+    ; While transparent seems better, I have seen it cause some diagrams to
+    ; inexplicably have a black foreground, which is hard to read.
     (plist-put org-latex-preview-appearance-options
                :background 'auto)
 
