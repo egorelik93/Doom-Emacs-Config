@@ -50,6 +50,11 @@ Do not use this if replacing any :lang sections manually.")
 (defvar my-modules-local-tools :keep
     "An alternative to the common case of replacing the first :tools list.
 Do not use this if replacing any :lang sections manually.")
+(defvar my-modules-remove-lsp nil
+  "If t, filter lsp and all +lsp flags")
+(defvar my-modules-remove-tree-sitter nil
+  "If t, filter treesitter and all +treesitter flags"
+  )
 
 (when noninteractive
   (load! "my-modules-lib" doom-user-dir)
@@ -64,6 +69,15 @@ Do not use this if replacing any :lang sections manually.")
   )
 (when (and noninteractive (not (eq my-modules-local-tools :keep)))
   (add-to-list 'my-modules-replace-list `(:tools . ,my-modules-local-tools))
+  )
+
+(when (and noninteractive my-modules-remove-lsp)
+  (add-to-list 'my-modules-replace-list 'lsp)
+  (add-to-list 'my-modules-replace-list '+lsp)
+  )
+(when (and noninteractive my-modules-remove-tree-sitter)
+  (add-to-list 'my-modules-replace-list 'tree-sitter)
+  (add-to-list 'my-modules-replace-list '+tree-siiter)
   )
 
 (defmacro my-doom! (doom)
@@ -250,7 +264,7 @@ continues to function despite using a dynamic list of modules."
        ;;scad              ; trust the preview, regret the render
        ;;scala             ; java, but good
        ;;(scheme +guile)   ; a fully conniving family of lisps
-       (sh +lsp)                ; she sells {ba,z,fi}sh shells on the C xor
+       ;;(sh +lsp)                ; she sells {ba,z,fi}sh shells on the C xor
        (sml +tree-sitter)
        ;;solidity          ; do you need a blockchain? No.
        ;;swift             ; who asked for emoji variables?
@@ -265,6 +279,8 @@ continues to function despite using a dynamic list of modules."
        emacs-lisp        ; drown in parentheses
        (org +dragndrop +pretty)               ; organize your plain life in plain text
        (latex +cdlatex)               ; writing papers in Emacs has never been so fun
+       (sh +lsp)                ; she sells {ba,z,fi}sh shells on the C xor
+       (:if (featurep :system 'windows) (sh +lsp +powershell))
 
        :email
        ;;(mu4e +org +gmail)
