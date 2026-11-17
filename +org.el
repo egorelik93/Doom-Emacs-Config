@@ -501,4 +501,18 @@ zero-width space is removed. The org backend is left untouched."
 
     ;; More immediate live-previews -- the default delay is 1 second
     (setq org-latex-preview-mode-update-delay 0.25)
+
+
+    ;; On WSL with virtiofs enabled, precompilation hangs
+    ;; because scanning the Windows TEMP dir for TEXINPUTS is extremely slow.
+    ;;
+    ;; A coarser possible implementation would be to
+    ;; just set temporary-file-directory locally on the
+    ;; org-latex-preview-mode-hook
+    (defun my-org-latex-preview-setup-wsl-crossover (distro)
+      (advice-add 'org-latex--precompile :around
+                  (defun my-org-latex--precompile (orig-fn &rest args)
+                    (let ((temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/")))
+                      (apply orig-fn args)
+                      ))))
     ))
