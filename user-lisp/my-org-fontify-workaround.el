@@ -25,6 +25,7 @@
 ;; face when they are visible (Org already does this when they are
 ;; hidden), so the face shows exactly the span's contents.
 (require 'org-element)
+(eval-when-compile (require 'cl-lib))
 
 (defun my/org-verbatim-markers-unface (positions)
   "Remove `org-code'/`org-verbatim' from the face at each of POSITIONS.
@@ -218,5 +219,40 @@ is still past POS."
     res))
 
 (advice-add #'org-do-emphasis-faces :around #'my/org-do-emphasis-faces-skip-verbatim-a)
+
+;; With `org-pretty-entities', `org-fontify-entities' draws \alpha as an
+;; alpha even inside ~code~/=verbatim=, which export keeps literal.  (Org
+;; skips both elsewhere: `org-do-latex-and-related' checks for these
+;; faces, and `org-raise-scripts' skips emphasized text.)  It runs after
+;; `org-do-emphasis-faces', so the code/verbatim face is already there to
+;; check.
+(defun my/org-fontify-entities-skip-verbatim-a (fn limit)
+  (let (res)
+    (while (and (setq res (funcall fn limit))
+                (let ((face (get-text-property (match-beginning 0) 'face)))
+                  (when (if (listp face)
+                            (or (memq 'org-code face) (memq 'org-verbatim face))
+                          (memq face '(org-code org-verbatim)))
+                    ;; Undo the composition and look for the next entity.
+                    (decompose-region (match-beginning 0) (match-end 0))
+                    t))))
+    res))
+
+(advice-add #'org-fontify-entities :around #'my/org-fontify-entities-skip-verbatim-a)
+
+;; `org-do-latex-and-related' skips code/verbatim by checking the face
+;; with `face-at-point', which lets overlays mask text properties.  So
+;; whenever an overlay with a face covers the text (`hl-line' on the
+;; current line, the region, spell-check marks), it misses the verbatim
+;; face and fontifies the contents as LaTeX; natively, that replaces the
+;; verbatim face altogether.  Make that check read the text's own face.
+(defun my/org-do-latex-and-related-text-faces-a (fn limit)
+  (cl-letf (((symbol-function 'face-at-point)
+             (lambda (&optional _text multiple)
+               (let ((faces (ensure-list (get-text-property (point) 'face))))
+                 (if multiple faces (car (last faces)))))))
+    (funcall fn limit)))
+
+(advice-add #'org-do-latex-and-related :around #'my/org-do-latex-and-related-text-faces-a)
 
 (provide 'my-org-fontify-workaround)
