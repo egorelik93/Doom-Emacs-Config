@@ -416,6 +416,141 @@
 (use-theme-package! my-doom-batppuccin-macchiato-theme
   :theme my-doom-batppuccin-macchiato
   :defer t
+  :setup
+  (
+   ;; Created by Claude
+   (defun my/neutralize-base-faces (base faces)
+  "In theme BASE, empty every clause of FACES' specs except the 16-color one.
+Faces not set by BASE are ignored, so this acts as an intersection."
+  (let ((want (make-hash-table :test 'eq)))
+    (dolist (f faces) (puthash f t want))
+    (apply #'custom-theme-set-faces base
+           (cl-loop for s in (get base 'theme-settings)
+                    when (and (eq (car s) 'theme-face)
+                              (gethash (nth 1 s) want))
+                    collect (list (nth 1 s)
+                                  (mapcar
+                                   (lambda (clause)
+                                     (if (and (consp clause)
+                                              (not (equal (car clause)
+                                                          '((class color) (min-colors 16)))))
+                                         (list (car clause) nil)
+                                       clause))
+                                   (nth 3 s)))))))
+
+   ;; This list of faces with leaked attributes
+   ;; was found by using the following code provided by Claude.
+   ;; It requires temporarily removing batppuccin-macchiato
+   ;; from the :every-enable and than manually enabling both themes.
+   ;;
+   ;;(defun my/face-snapshot (attrs)
+   ;;  "Hash of face -> resolved values of ATTRS plus its direct :inherit value."
+   ;;  (let ((h (make-hash-table :test 'eq)))
+   ;;    (dolist (f (face-list) h)
+   ;;      (puthash f
+   ;;               (append (mapcar (lambda (a)
+   ;;                                 (face-attribute f a nil
+   ;;                                                 (if (eq f 'default) t 'default)))
+   ;;                               attrs)
+   ;;                       (list (face-attribute f :inherit nil)))
+   ;;               h))))
+   ;;
+   ;;(defun my/theme-effective-leaks (base overlay)
+   ;;  "Show how BASE still alters faces that OVERLAY sets.
+   ;;Returns an alist of (FACE . CHANGED-ATTRS), where CHANGED-ATTRS are the
+   ;;attributes (resolved through inheritance, plus :inherit itself) that differ
+   ;;between BASE enabled and BASE disabled."
+   ;;  (interactive
+   ;;   (let ((names (mapcar #'symbol-name custom-enabled-themes)))
+   ;;     (list (intern (completing-read "Base theme: " names nil t))
+   ;;           (intern (completing-read "Overlay theme: " names nil t)))))
+   ;;  (unless (and (memq base custom-enabled-themes)
+   ;;               (memq overlay custom-enabled-themes))
+   ;;    (user-error "Both themes must be enabled"))
+   ;;  (let* ((saved custom-enabled-themes)
+   ;;         (attrs '(:family :foundry :width :height :weight :slant :underline
+   ;;                  :overline :strike-through :box :inverse-video :foreground
+   ;;                  :background :stipple :extend))
+   ;;         (touched (cl-loop for s in (get overlay 'theme-settings)
+   ;;                           when (eq (car s) 'theme-face)
+   ;;                           collect (nth 1 s)))
+   ;;         with without results)
+   ;;    (setq with (my/face-snapshot attrs))
+   ;;    (unwind-protect
+   ;;        (progn (disable-theme base)
+   ;;               (setq without (my/face-snapshot attrs)))
+   ;;      ;; enable-theme moves a theme to the top, so this restores the order.
+   ;;      (dolist (th (reverse saved)) (enable-theme th)))
+   ;;    (maphash
+   ;;     (lambda (face w)
+   ;;       (when (memq face touched)
+   ;;         (let ((wo (gethash face without)))
+   ;;           (unless (equal w wo)
+   ;;             (push (cons face
+   ;;                         (cl-loop for a in (append attrs '(:inherit))
+   ;;                                  for x in w for y in wo
+   ;;                                  unless (equal x y) collect a))
+   ;;                   results)))))
+   ;;     with)
+   ;;    (setq results (sort results (lambda (a b) (string< (car a) (car b)))))
+   ;;    (message "%s under %s: %d faces differ, %d attributes total"
+   ;;             base overlay (length results)
+   ;;             (apply #'+ (mapcar (lambda (r) (length (cdr r))) results)))
+   ;;    (when (called-interactively-p 'any)
+   ;;      (with-output-to-temp-buffer "*Theme leaks*"
+   ;;        (dolist (r results)
+   ;;          (princ (format "%-40s %s\n" (car r) (cdr r))))))
+   ;;    results))
+   ;;
+   (defvar my-doom-batppuccin-macchiato-leaked-faces
+     '((bookmark-face :background :extend)
+        (centaur-tabs-modified-marker-selected :weight :inherit)
+        (centaur-tabs-modified-marker-unselected :background :inherit)
+        (completions-first-difference :inherit) (corfu-default :inherit)
+        (custom-state :background) (diff-added :inherit) (diff-hl-change :background)
+        (diff-hl-delete :background) (diff-hl-insert :background)
+        (diff-refine-added :inverse-video :inherit)
+        (diff-refine-changed :inverse-video :inherit)
+        (diff-refine-removed :inverse-video :inherit) (font-lock-bracket-face :inherit)
+        (font-lock-comment-delimiter-face :inherit) (font-lock-delimiter-face :inherit)
+        (font-lock-doc-face :inherit) (font-lock-escape-face :weight :inherit)
+        (font-lock-function-call-face :slant :inherit)
+        (font-lock-misc-punctuation-face :inherit)
+        (font-lock-negation-char-face :weight :inherit)
+        (font-lock-preprocessor-face :weight :inherit)
+        (font-lock-property-name-face :weight) (font-lock-property-use-face :inherit)
+        (font-lock-regexp-grouping-backslash :inherit)
+        (font-lock-regexp-grouping-construct :inherit)
+        (font-lock-variable-use-face :inherit) (fringe :inherit)
+        (header-line :box :inherit) (highlight :foreground) (isearch :inherit)
+        (isearch-fail :weight) (lazy-highlight :weight) (line-number :weight :inherit)
+        (line-number-current-line :extend :inherit) (link :weight)
+        (magit-process-ng :inherit) (magit-process-ok :inherit)
+        (magit-section-highlight :inherit) (marginalia-documentation :inherit)
+        (mc/cursor-face :inherit) (mode-line-highlight :background :inherit)
+        (orderless-match-face-0 :background) (orderless-match-face-1 :background)
+        (orderless-match-face-2 :background) (orderless-match-face-3 :background)
+        (org-agenda-date :weight) (org-agenda-date-weekend :weight)
+        (org-agenda-done :weight :inherit) (org-block-begin-line :inherit)
+        (org-checkbox :inherit) (org-checkbox-statistics-done :weight :inherit)
+        (org-checkbox-statistics-todo :weight :inherit)
+        (org-code :background :extend :inherit) (org-done :inherit)
+        (org-level-1 :extend) (org-level-2 :extend) (org-level-3 :extend)
+        (org-level-4 :extend) (org-level-5 :extend) (org-level-6 :extend)
+        (org-level-7 :extend) (org-level-8 :extend) (org-link :weight :inherit)
+        (org-quote :background :inherit) (org-verse :background) (outline-1 :extend)
+        (outline-2 :extend) (outline-3 :extend) (outline-4 :extend) (outline-5 :extend)
+        (outline-6 :extend) (outline-7 :extend) (outline-8 :extend)
+        (sh-heredoc :weight :inherit) (sh-quoted-exec :weight :inherit)
+        (solaire-default-face :inherit) (solaire-hl-line-face :extend :inherit)
+        (solaire-org-hide-face :inherit)
+        (sp-show-pair-match-face :weight :foreground :background)
+        (sp-show-pair-mismatch-face :weight :foreground)
+        (undo-tree-visualizer-current-face :weight) (vertical-border :background)
+        (widget-field :box) (window-divider :background :inherit)
+        (window-divider-first-pixel :background :inherit)
+        (window-divider-last-pixel :background :inherit)))
+   )
   :first-enable
   (
    (load-theme 'batppuccin-macchiato t t)
@@ -423,6 +558,18 @@
   :every-enable
   (
    (enable-theme 'batppuccin-macchiato)
+
+   ;; While batppuccin should take priority, properties that batppuccin doesn't
+   ;; set can leak through.
+   ;; Unset from this theme any faces batppuccin sets.
+   ;; org-code is one we know is affected without this.
+   (my/neutralize-base-faces
+    theme
+    (mapcar #'car my-doom-batppuccin-macchiato-leaked-faces)
+    ;;(cl-loop for s in (get 'batppuccin-macchiato 'theme-settings)
+    ;;         when (eq (car s) 'theme-face)
+    ;;         collect (cadr s))
+    )
    )
   :every-disable
   (
