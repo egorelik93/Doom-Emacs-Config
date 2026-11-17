@@ -388,8 +388,15 @@
           `(solaire-mode-line-inactive-face ((,class :inverse-video nil :background ,bat-crust :foreground ,bat-subtext1)))
           `(solaire-header-line-face ((,class :inherit solaire-mode-line-face)))
 
-          ;; I dislike batppuccin's deviation here
-          `(org-block ((,class :extend t :background ,bat-mantle :foreground ,bat-green)))
+          ;; Batppuccin was right to deviate from catppuccin on org-blocks.
+          ;; Instead, we will use green just for language-less blocks.
+          ;; But we will need to set a face up in org configuration.
+          ;; For org-block, I want to distinguish it from text just slightly.
+          ;;`(org-block ((,class :extend t :background ,bat-mantle :foreground ,bat-green)))
+          `(org-block ((,class (:foreground ,(my-batppuccin-recolor bat-text 3 theme) :background ,bat-mantle :extend t))))
+          `(my-org-block-languageless-face ((,class :foreground ,bat-green :inherit org-block)))
+          ;; Make consistent with verbatim
+          `(my-org-example-block-face ((,class :foreground ,bat-teal :inherit org-block)))
           )
 
          (custom-theme-set-variables

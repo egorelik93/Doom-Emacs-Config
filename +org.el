@@ -147,7 +147,37 @@ Does not fire on single-letter words or on the argument of a \\command."
   (add-to-list 'org-entities-user
                `("zwspinternal" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "" ,my-org-zwsp-placeholder))
 
+
   (require 'my-org-fontify-workaround)
+
+
+  (defface my-org-block-languageless-face '((t :inherit org-block))
+    "Face for org blocks with no language specified")
+  (push '("" my-org-block-languageless-face) org-src-block-faces)
+
+  (defface my-org-example-block-face '((t :inherit org-block))
+    "Face for org example blocks"
+    )
+
+  ;; Created by Claude
+  (defun my/org-example-block-p (body-start)
+    "Non-nil if the block body starting at BODY-START belongs to an example block."
+    (save-excursion
+      (goto-char body-start)
+      (forward-line -1)
+      (looking-at-p "[ \t]*#\\+begin_example\\b")))
+
+  ;; This trick allows us to separately color example blocks from src blocks.
+  ;; We can probably use the same mechanism to extend it to export and maybe
+  ;; other blocks if we were so inclined.
+  (defun my/org-fontify-example-block (orig-fn lang start end)
+    (if (my/org-example-block-p start)
+        (let ((org-src-block-faces
+               (cons '("" my-org-example-block-face) org-src-block-faces)))
+        (funcall orig-fn "" start end))
+    (funcall orig-fn lang start end)))
+  (advice-add 'org-src-font-lock-fontify-block :around #'my/org-fontify-example-block)
+
 
   (defun my/org-set-created-property ()
     "Set CREATED property with current timestamp if not already set."
