@@ -477,7 +477,58 @@ zero-width space is removed. The org backend is left untouched."
   (add-to-list 'org-export-filter-final-output-functions #'+org-export-remove-zero-width-space t)
   )
 
+(defvar my-lazy-initialize-org-latex-preview-autoloads nil)
 (after! org
+  (defun my-initialize-org-latex-preview-autoloads ()
+    ;; Copied from org-latex-preview
+    (setq org-latex-preview--dvisvgm3-minor-version
+          (or (and (executable-find "dvisvgm")
+                   (with-temp-buffer
+                     (call-process "dvisvgm" nil t nil "--version")
+                     (let ((ver (version-to-list
+                                 (string-trim (buffer-string) "dvisvgm "))))
+                       (and (= (car ver) 3) (cadr ver)))))
+              -1))
+    (setq org-latex-preview-process-alist
+          `((dvipng
+             :programs ("latex" "dvipng")
+             :description "dvi > png"
+             :message "you need to install the programs: latex and dvipng."
+             :image-input-type "dvi"
+             :image-output-type "png"
+             :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
+             :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
+             :transparent-image-converter
+             ("dvipng --follow -D %D -T tight -bg Transparent --depth --height -o %B-%%09d.png %f"))
+            (dvisvgm
+             :programs ("latex" "dvisvgm")
+             :description "dvi > svg"
+             :message "you need to install the programs: latex and dvisvgm."
+             :image-input-type "dvi"
+             :image-output-type "svg"
+             :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
+             ;; The --optimise, --clipjoin, and --relative flags cause dvisvgm to
+             ;; do some extra work to tidy up the SVG output, but barely add to
+             ;; the overall dvisvgm runtime (<1% increace, from testing).
+             :image-converter
+             ,(list (concat "dvisvgm --page=1- --optimize --clipjoin --relative --no-fonts"
+                            (if (>= org-latex-preview--dvisvgm3-minor-version 2)
+                                " -v3 --message='processing page {?pageno}: output written to {?svgpath}'" "")
+                            " --bbox=preview -o %B-%%9p.svg %f")))
+            (imagemagick
+             :programs ("pdflatex" "convert")
+             :description "pdf > png"
+             :message "you need to install the programs: latex and imagemagick."
+             :image-input-type "pdf"
+             :image-output-type "png"
+             :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
+             :image-converter
+             ("convert -density %D -trim -antialias %f -quality 100 %B-%%09d.png")))
+          ))
+  (unless my-lazy-initialize-org-latex-preview-autoloads
+    (my-initialize-org-latex-preview-autoloads)
+    )
+
   (use-package! org-latex-preview
     :if (executable-find "latex")
     ;; Turn on `org-latex-preview-mode', it's built into Org and much faster/more
@@ -531,18 +582,57 @@ zero-width space is removed. The org backend is left untouched."
 
     ;; More immediate live-previews -- the default delay is 1 second
     (setq org-latex-preview-mode-update-delay 0.25)
-
-
-    ;; On WSL with virtiofs enabled, precompilation hangs
-    ;; because scanning the Windows TEMP dir for TEXINPUTS is extremely slow.
-    ;;
-    ;; A coarser possible implementation would be to
-    ;; just set temporary-file-directory locally on the
-    ;; org-latex-preview-mode-hook
-    (defun my-org-latex-preview-setup-wsl-crossover (distro)
-      (advice-add 'org-latex--precompile :around
-                  (defun my-org-latex--precompile (orig-fn &rest args)
-                    (let ((temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/")))
-                      (apply orig-fn args)
-                      ))))
     ))
+
+(when (featurep :system 'windows)
+  ;; On WSL with virtiofs enabled, precompilation hangs
+  ;; because scanning the Windows TEMP dir for TEXINPUTS is extremely slow.
+  ;;
+  ;; A coarser possible implementation would be to
+  ;; just set temporary-file-directory locally on the
+  ;; org-latex-preview-mode-hook
+  (defun my-org-latex-preview-setup-wsl-crossover (distro)
+    (setq my-lazy-initialize-org-latex-preview-autoloads t)
+    (defvar my-org-latex-preview--autoloads-initialized nil)
+
+    ;; Created by Google.
+    (defun current-dir-complex-p (&optional threshold dir)
+      "Return non-nil if DIR (default `default-directory') has more than THRESHOLD folders.
+THRESHOLD defaults to 50."
+      (let ((limit (or threshold 50))
+            (target (or dir default-directory))
+            (count 0))
+        (catch 'exceeded
+          (dolist (entry (directory-files-and-attributes
+                          target nil directory-files-no-dot-files-regexp t))
+            ;; (nth 1 entry) is t for directories, a string for symlinks, nil for files
+            (when (eq (nth 1 entry) t)
+              (setq count (1+ count))
+              (when (> count limit)
+                (throw 'exceeded t))))
+          nil)))
+
+    (advice-add 'org-latex--precompile :around
+                (defun my-org-latex--precompile (orig-fn info preamble &optional tempfile-p spec)
+                  (defvar-local my-org-latex-preview--precompile-safe nil)
+
+                  (unless my-org-latex-preview--autoloads-initialized
+                    (my-initialize-org-latex-preview-autoloads)
+                    (setq my-org-latex-preview--autoloads-initialized t)
+                    )
+
+                  (when-let* ((temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/"))
+                              ;; This seems to be enough to start WSL if it is not already running,
+                              ;; rather than continuing to precompile and hanging as
+                              ;; sometimes seems to happen.
+                              (_ (or
+                                  my-org-latex-preview--precompile-safe
+                                  (file-exists-p temporary-file-directory)))
+                              (_ (or
+                                  my-org-latex-preview--precompile-safe
+                                  tempfile-p
+                                  (string-prefix-p "//wsl" default-directory)
+                                  (not (current-dir-complex-p default-directory)))))
+                    (setq my-org-latex-preview--precompile-safe t)
+                    (funcall orig-fn info preamble tempfile-p spec)
+                    )))))

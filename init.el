@@ -324,6 +324,27 @@ continues to function despite using a dynamic list of modules."
        ))
 
 
+(defun my-set-org-latex-preview-dvisvgm3-minor-version (minor-version)
+  "IMPORTANT FOR Windows-to-WSL crossover!
+
+Org-latex-preview--dvisvgm3-minor-version is an autoloaded variable in org-latex-preview,
+which tries to run dvisvgm and get its version to initialize itself.
+Being autoloaded, this means it runs at emacs startup, even when org is not being used.
+Unfortunately, this means that with the WSL crossover, the forwarding dvisvgm script
+gets called and spins up WSL if not already started.
+
+All we can do to suppress this autoload is set the minor version *here*,
+for doom sync to pick up.
+On my machines, it should be safe enough to set this to a recent version.
+The actual value is determined when org loads or org-latex-preview is used,
+depending on whether my-org-latex-preview-setup-wsl-crossover was called.
+If the value here is not appropriate, set this manually in local/init.el.
+"
+  (setq org-latex-preview--dvisvgm3-minor-version minor-version)
+  )
+(my-set-org-latex-preview-dvisvgm3-minor-version 6)
+
+
 (when my-log-evil-keybinds
   (setq message-log-max (* message-log-max 10))
   )
