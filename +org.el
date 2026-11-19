@@ -623,6 +623,10 @@ THRESHOLD defaults to 50."
 
     (defun my-org-latex-preview--redirect-temp (orig-fn &rest args)
       (let ((temporary-file-directory my-wsl-temporary-file-directory))
+        ;; Safety - make sure WSL is running so we don't hang.
+        ;; I believe, but am not sure, that all current
+        ;; users of this are always part of a current compilation.
+        (file-exists-p temporary-file-directory)
         (apply orig-fn args)
       ))
 
@@ -634,7 +638,6 @@ THRESHOLD defaults to 50."
     ;; But the most satisfying approach, albeit requiring maintenance
     ;; when org-latex-preview internals change, is to have org-latex-preview
     ;; use the WSL temp *everywhere*.
-    (advice-add 'org-latex-preview--create-image-async :around #'my-org-latex-preview--redirect-temp)
     (advice-add 'org-latex-preview--tex-compile-async :around #'my-org-latex-preview--redirect-temp)
     (advice-add 'org-latex-preview--image-extract-async :around #'my-org-latex-preview--redirect-temp)
     (advice-add 'org-latex-preview--do-cleanup :around #'my-org-latex-preview--redirect-temp)
