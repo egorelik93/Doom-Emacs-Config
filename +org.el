@@ -592,6 +592,8 @@ zero-width space is removed. The org backend is left untouched."
   ;; just set temporary-file-directory locally on the
   ;; org-latex-preview-mode-hook
   (defun my-org-latex-preview-setup-wsl-crossover (distro)
+    (defconst my-wsl-temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/"))
+
     (setq my-lazy-initialize-org-latex-preview-autoloads t)
     (defvar my-org-latex-preview--autoloads-initialized nil)
 
@@ -612,6 +614,30 @@ THRESHOLD defaults to 50."
                 (throw 'exceeded t))))
           nil)))
 
+
+    (defun my-org-latex-preview--redirect-temp (orig-fn &rest args)
+      (let ((temporary-file-directory my-wsl-temporary-file-directory))
+        (apply orig-fn args)
+      ))
+
+    ;; While things generally work with latex given my precompilation advice below,
+    ;; lualatex apparently is trying (via kpathsea) to scan the entire *output* directory structure -
+    ;; which in this case is the massive Windows Temp dir. It easily times out org-latex-preview.
+    ;; The easiest reasonable approach would be a subdirectory for temporary-file-directory,
+    ;; which I have commented out below.
+    ;; But the most satisfying approach, albeit requiring maintenance
+    ;; when org-latex-preview internals change, is to have org-latex-preview
+    ;; use the WSL temp *everywhere*.
+    (advice-add 'org-latex-preview--create-image-async :around #'my-org-latex-preview--redirect-temp)
+    (advice-add 'org-latex-preview--tex-compile-async :around #'my-org-latex-preview--redirect-temp)
+    (advice-add 'org-latex-preview--image-extract-async :around #'my-org-latex-preview--redirect-temp)
+    (advice-add 'org-latex-preview--do-cleanup :around #'my-org-latex-preview--redirect-temp)
+    (advice-add 'org-latex-preview--generic-callback :around #'my-org-latex-preview--redirect-temp)
+    (advice-add 'org-latex-preview--dvipng-filter :around #'my-org-latex-preview--redirect-temp)
+
+    ;;(add-hook! 'org-latex-preview-mode-hook
+    ;;  (setq-local temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/")))
+
     (advice-add 'org-latex--precompile :around
                 (defun my-org-latex--precompile (orig-fn info preamble &optional tempfile-p spec)
                   (defvar-local my-org-latex-preview--precompile-safe nil)
@@ -621,7 +647,7 @@ THRESHOLD defaults to 50."
                     (setq my-org-latex-preview--autoloads-initialized t)
                     )
 
-                  (when-let* ((temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/"))
+                  (when-let* ((temporary-file-directory my-wsl-temporary-file-directory)
                               ;; This seems to be enough to start WSL if it is not already running,
                               ;; rather than continuing to precompile and hanging as
                               ;; sometimes seems to happen.
