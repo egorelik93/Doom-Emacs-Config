@@ -148,6 +148,12 @@ Does not fire on single-letter words or on the argument of a \\command."
                `("zwspinternal" "\\hspace{0pt}" nil "&ZeroWidthSpace;" "" "" ,my-org-zwsp-placeholder))
 
 
+  ;; Discovered this feature after searching
+  (add-hook! 'org-mode-local-vars-hook
+    (when org-startup-with-link-previews
+      (org-link-preview-region)))
+
+
   (require 'my-org-fontify-workaround)
 
 
