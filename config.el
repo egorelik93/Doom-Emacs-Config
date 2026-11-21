@@ -274,8 +274,8 @@ mapping will always be the ESC prefix map."
 
 ;; Set my tab-to-spaces preferences.
 (setq-default tab-stop-list '(4 8 12 16 20))
-;; Set my preferred spacing when my-override-soft-tab-mode is on.
-(setq-default my-override-soft-tab-width 4)
+;; Set my preferred spacing when override-soft-tab-mode is on.
+(setq-default override-soft-tab-width 4)
 
 
 (map! "C-RET" #'cua-rectangle-mark-mode)
