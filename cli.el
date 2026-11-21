@@ -1,5 +1,18 @@
 ;;; cli.el -*- lexical-binding: t; -*-
 
+;; Whether in my-prepare-user-lisp or in straight,
+;; I am finding unexpected behavior in native compilation.
+;; Byte recompilation is often triggered, but
+;; native compilation is not;
+;; That leads to the eln timestamp being stale
+;; and emacs trying to compile it at startup.
+;; This does not change when doom or straight
+;; decides to compile a package, only that when they do,
+;; ensuring that native-compile-async does not itself veto it.
+;; Because this variable is evaluated by a job queue,
+;; note that it not enough to set it within a scope.
+(setq native-comp-always-compile t)
+
 ;; Suggested by Google
 (defun my-erase-log-buffer (buf-name)
   (let ((log-buf (get-buffer buf-name)))
