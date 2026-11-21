@@ -144,3 +144,4 @@
 ;; Remove this once org is released and updated
 ;; Don't pin org to the version bundled with Doom.
 (unpin! org)
+(package! org :pin "da80fbb3ea12ffc1a2f355e94311fcb3ff1b5a76")
