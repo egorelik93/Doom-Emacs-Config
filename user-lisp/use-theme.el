@@ -21,6 +21,7 @@
   )
 
 
+(defvar doom-disabled-packages)
 (defmacro use-theme-package! (package &rest args)
   "Adds detection of doom disabled packages to use-theme-package"
   (declare (indent 1))
