@@ -4,11 +4,11 @@
 (require 'el-patch)
 
   ;; Only needed for el-patch validation
-(eval-when-compile (progn
-                     (require 'doom)
-                     (require 'doom-modules)
-                     (autoload 'doom/backward-delete-whitespace-to-column
-                       (doom-module-locate-path '(:config . default) "autoload/text.el"))))
+(eval-when-compile
+  (require 'doom)
+  (require 'doom-modules)
+  (when-let ((file (doom-module-locate-path '(:config . default) "autoload/text.el")))
+      (autoload 'doom/backward-delete-whitespace-to-column file)))
 
 
 (defvar override-soft-tab-mode)
