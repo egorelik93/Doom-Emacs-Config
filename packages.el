@@ -134,6 +134,8 @@
 
 (package! benchmark-init)
 
+(package! el-patch)
+
 
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)

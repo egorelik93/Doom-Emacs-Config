@@ -105,6 +105,11 @@ you're done. This can be called from an external script on Windows."
         :i [S-return] #'+org/shift-return
         :i "S-RET"    #'+org/shift-return)
 
+  ;; org mandates a tab-width of 8 for display purposes.
+  ;; I don't care about that, but I do want TAB to insert
+  ;; a more normal number of spaces.
+  (add-hook 'org-mode-hook #'my-override-soft-tab-mode)
+
   ;; Modified from org-cdlatex-math-modify
   (defun my/org-cdlatex-math-modify-word-default (&optional _arg)
   "Execute `my/cdlatex-math-modify-word-default' in LaTeX fragments.

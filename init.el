@@ -375,6 +375,11 @@ If the value here is not appropriate, set this manually in local/init.el.
   (setq load-path-filter-function #'load-path-filter-cache-directory-files))
 
 
+;; Since we involve el-patch during doom sync,
+;; set this here.
+(setq el-patch-enable-use-package-integration nil)
+
+
 
 
 ; Must be at end of file
