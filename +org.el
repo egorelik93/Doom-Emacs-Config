@@ -540,6 +540,21 @@ zero-width space is removed. The org backend is left untouched."
     (my-initialize-org-latex-preview-autoloads)
     )
 
+  ;; An issue on the first load of org-mode;
+  ;; local vars don't seem to get read until after latex preview
+  ;; has been started, if STARTUP has specified so.
+  ;; Unfortunately, that means disabling precompile
+  ;; doesn't get applied in time to quiet the warning.
+  ;; In that situation, we will forcefully apply local vars.
+  ;; Thise advice works only because this never seems to happen again
+  ;; once org is loaded.
+  (defun my-org-latex-preview--apply-local-vars (&rest args)
+    (hack-local-variables)
+    )
+  (advice-add 'org-latex-preview :before #'my-org-latex-preview--apply-local-vars)
+  (add-hook! 'org-mode-local-vars-hook
+    (advice-remove 'org-latex-preview #'my-org-latex-preview--apply-local-vars))
+
   (use-package! org-latex-preview
     :if (executable-find "latex")
     ;; Turn on `org-latex-preview-mode', it's built into Org and much faster/more
