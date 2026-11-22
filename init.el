@@ -380,22 +380,6 @@ If the value here is not appropriate, set this manually in local/init.el.
 (setq el-patch-enable-use-package-integration nil)
 
 
-(after! doom-packages
-  ;; Doom redirects native-comp-eln-load-path correctly, but it is too late!
-  ;; Before that, doom-packages gets loaded (by doom-cli), and this variable
-  ;; gets set to the wrong value.
-  ;; Emacs will jit compile anyway, but a bug perhaps?
-  (setq doom-packages--eln-output-path (car (bound-and-true-p native-comp-eln-load-path)))
-
-  ;; I am pretty sure the original behavior of this function is broken,
-  ;; as it never seems to write.
-  ;;
-  ;; Following the blame trail, this seems to be most in spirit of the original behavior.
-  (defun doom-packages--eln-error-file (eln-name)
-    "Return the expected .error file corresponding to `eln-name'."
-    (file-name-concat doom-packages--eln-output-path (concat eln-name ".error"))))
-
-
 
 
 ; Must be at end of file
