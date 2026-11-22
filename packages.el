@@ -141,7 +141,5 @@
 (my-package-default-disable! ebdb)
 (my-package-default-disable! gnu-alias)
 
-;; Remove this once org is released and updated
-;; Don't pin org to the version bundled with Doom.
-(unpin! org)
-(package! org :pin "da80fbb3ea12ffc1a2f355e94311fcb3ff1b5a76")
+;; Remove this once doom updates to latest org.
+(package! org :pin "146e8a6bd5c0f6c2965456c0eb882c6d673b0465")
