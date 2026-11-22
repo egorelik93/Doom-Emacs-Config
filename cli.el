@@ -13,6 +13,7 @@
 ;; note that it not enough to set it within a scope.
 (setq native-comp-always-compile t)
 
+
 ;; Suggested by Google
 (defun my-erase-log-buffer (buf-name)
   (let ((log-buf (get-buffer buf-name)))
@@ -96,17 +97,42 @@
 
 ;; Because native compilation is async, we can only catch
 ;; errors at the very end of the doom sync.
-(add-hook 'doom-after-sync-hook
-          (lambda ()
-            ;; When everything else is done, we have to wait
-            ;; to get output from native-compile-async
-            ;; Suggested by Google.
-            (while (or comp-files-queue
-                       (> (hash-table-count comp-async-compilations) 0))
-              (accept-process-output nil 0.5))
+(when (native-comp-available-p)
+  (add-hook 'doom-after-sync-hook
+            (lambda ()
+              ;; When everything else is done, we have to wait
+              ;; to get output from native-compile-async
+              ;; Suggested by Google.
+              (while (or comp-files-queue
+                         (> (hash-table-count comp-async-compilations) 0))
+                (accept-process-output nil 0.5))
 
-            (with-current-buffer comp-async-buffer-name
-              (let ((string (buffer-string)))
-                (when (or (string-search "Error" string))
-                  (print! "> Native Compilation failed:\n%s" string)))))
-          90)
+              (with-current-buffer comp-async-buffer-name
+                (let ((string (buffer-string)))
+                  (when (or (string-search "Error" string))
+                    (print! "> Native Compilation failed:\n%s" string)))))
+            90))
+
+
+;; A hack on Windows:
+;; cl-seq doesn't seem to come precompiled on Windows, and it seems to get
+;; loaded in the doom/emacs startup process *before* the eln cache
+;; location gets changed, issuing a native compile.
+;; But this native compile doesn't seem to happen until *after*
+;; the location gets changed. So on every start, emacs will try to compile it,
+;; to no avail.
+(when (and (featurep :system 'windows) (boundp 'native-comp-eln-load-path))
+  (add-hook! 'doom-before-sync-hook
+    (let ((native-comp-eln-load-path
+           (cons (file-name-concat doom-emacs-dir "eln-cache/")
+                 (cdr native-comp-eln-load-path)))
+          (el-file (locate-library "cl-seq.el")))
+      (unless (file-exists-p (comp-el-to-eln-filename el-file))
+        (native-compile-async el-file)
+
+        (while (or comp-files-queue
+                   (> (hash-table-count comp-async-compilations) 0))
+          (accept-process-output nil 0.5))
+
+        (my-erase-log-buffer comp-async-buffer-name)))
+      ))
