@@ -244,7 +244,7 @@
                                                   (interactive)
                                                   (if (bound-and-true-p server-buffer-clients)
                                                       (user-error "Cannot exit client process with error code")
-                                                    (kill-emacs (or err-code 1))))
+                                                    (kill-emacs 1)))
        )
 
       ;;; <leader> s --- search

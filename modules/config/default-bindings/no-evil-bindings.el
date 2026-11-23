@@ -812,7 +812,7 @@
                                                   (interactive)
                                                   (if (bound-and-true-p server-buffer-clients)
                                                       (user-error "Cannot exit client process with error code")
-                                                    (kill-emacs (or err-code 1))))
+                                                    (kill-emacs 1)))
        :desc "Quick save current session"   "s" #'doom/quicksave-session
        :desc "Restore last session"         "l" #'doom/quickload-session
        :desc "Save session to file"         "S" #'doom/save-session
