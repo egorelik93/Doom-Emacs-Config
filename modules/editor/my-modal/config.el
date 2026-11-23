@@ -157,11 +157,21 @@ pass (list nil) instead to indicate a nil `cursor-type'
   (advice-add 'boon/after-change-hook :before-until
             (lambda (&rest _) (boon-shell-mode-p)))
 
+  ;; Inspired by https://github.com/yantar92/emacs-config/blob/master/config.org#boon-navigation--search
+  ;; but a more restricted implementation.
+  (defvar my-push-message-nomsg nil)
+  (defadvice! my-push-mark (args)
+    :filter-args #'push-mark
+    (if my-push-message-nomsg
+        (list (car args) t (caddr args))
+      args))
+
   ; Override boon's behavior to not care if it's read-only.
   (defun boon-set-insert-state ()
     "Switch to insert state."
     (interactive)
-    (boon-set-state 'boon-insert-state))
+    (let ((my-push-message-nomsg t))
+      (boon-set-state 'boon-insert-state)))
 
   ; Boon does not save the state normally, which I find annoying.
   (remove-hook 'window-selection-change-functions 'boon-reset-state-for-switchw)
@@ -215,8 +225,16 @@ pass (list nil) instead to indicate a nil `cursor-type'
         "<C-i>" #'pixel-scroll-interpolate-up ; C-i is always equivalent to terminal TAB.
                                               ; Thus, picking a frequent command that already has
                                               ; a less reachable key, namely Page Up.
-        "C-k" #'pixel-scroll-interpolate-down
-        ; discourage use while in termimal
+        ;; In some terminals, C-j is always equivalent to C-RET.
+        ;; Since C-i is useless anyway, may as well rebind use for C-k to replace C-j.
+        "C-k" '(menu-item "" pixel-scroll-interpolate-down
+                :filter (lambda (cmd) (if (display-graphic-p)
+                                     #'pixel-scroll-interpolate-down
+                                   #'scroll-down-line)))
+        "C-S-j" (lookup-key global-map (kbd "C-j"))
+        ;; Fallbacks in case you do want scrolling in terminals
+        "C-p" #'pixel-scroll-interpolate-up
+        "C-n" #'pixel-scroll-interpolate-down
         )
 
   (when (boundp '+dashboard-mode-map)
