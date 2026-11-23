@@ -525,11 +525,12 @@ zero-width space is removed. The org backend is left untouched."
     ;; Copied from org-latex-preview
     (setq org-latex-preview--dvisvgm3-minor-version
           (or (and (executable-find "dvisvgm")
-                   (with-temp-buffer
-                     (call-process "dvisvgm" nil t nil "--version")
-                     (let ((ver (version-to-list
-                                 (string-trim (buffer-string) "dvisvgm "))))
-                       (and (= (car ver) 3) (cadr ver)))))
+                   (let ((default-directory "~"))
+                     (with-temp-buffer
+                       (call-process "dvisvgm" nil t nil "--version")
+                       (let ((ver (version-to-list
+                                   (string-trim (buffer-string) "dvisvgm "))))
+                         (and (= (car ver) 3) (cadr ver))))))
               -1))
     (setq org-latex-preview-process-alist
           `((dvipng
@@ -695,14 +696,18 @@ THRESHOLD defaults to 50."
     ;;(add-hook! 'org-latex-preview-mode-hook
     ;;  (setq-local temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/")))
 
-    (advice-add 'org-latex--precompile :around
-                (defun my-org-latex--precompile (orig-fn info preamble &optional tempfile-p spec)
-                  (defvar-local my-org-latex-preview--precompile-safe nil)
-
+    (advice-add 'org-latex-preview--create-image-async :before
+                (defun my-org-latex-preview--lazy-initialize-autoloads ()
                   (unless my-org-latex-preview--autoloads-initialized
                     (my-initialize-org-latex-preview-autoloads)
                     (setq my-org-latex-preview--autoloads-initialized t)
-                    )
+                    (advice-remove 'org-latex-preview--create-image-async #'my-org-latex-preview--lazy-initialize-autoloads)
+                    ))
+                )
+
+    (advice-add 'org-latex--precompile :around
+                (defun my-org-latex--precompile (orig-fn info preamble &optional tempfile-p spec)
+                  (defvar-local my-org-latex-preview--precompile-safe nil)
 
                   (when-let* ((temporary-file-directory my-wsl-temporary-file-directory)
                               ;; This seems to be enough to start WSL if it is not already running,

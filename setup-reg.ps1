@@ -210,3 +210,10 @@ Set-RegistryEntry -Path "HKCU\Software\Classes\Drive\shell\EmacsOpenDirSameFrame
 # Not sure if it works.
 Set-RegistryKey -Path "HKCU\Software\Classes\*\OpenWithProgids"
 Set-RegistryEntry -Path "HKCU\Software\Classes\*\OpenWithProgids" -Name "Emacs.File" -Value ""
+
+
+# Disable UNC check - it can interfere with WSL interop.
+# In theory we could use pushd to create temporary drive letters.
+# Easier to just disable the check.
+Set-RegistryKey -Path "HKCU\Software\Microsoft\Command Processor"
+Set-RegistryEntry -Path "HKCU\Software\Microsoft\Command Processor" -Name "DisableUNCCheck" -Value 1 -Type DWord
