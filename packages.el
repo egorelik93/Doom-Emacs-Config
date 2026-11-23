@@ -136,6 +136,8 @@
 
 (package! el-patch)
 
+(package! mixed-pitch)
+
 
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)

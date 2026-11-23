@@ -16,6 +16,37 @@
   )
 
 
+(use-package! mixed-pitch
+  :hook (org-mode . mixed-pitch-mode)
+  :config
+
+  (setq mixed-pitch-set-height t)
+  (setq mixed-pitch-cursor-type nil)
+
+  (dolist (face '(my-org-block-languageless-face
+                  my-org-example-block-face
+                  ;;Unclear if these have an effect, or if we want that.
+                  ;;org-list-dt
+                  ;;org-indent
+                  ;;org-checkbox
+                  ))
+    (add-to-list 'mixed-pitch-fixed-pitch-faces face))
+
+    (defun my/org-fix-list-indentation-face ()
+      "Force leading whitespace before Org list bullets to use `fixed-pitch'."
+      (font-lock-add-keywords
+       ;; Can also set this on per-buffer basis with nil,
+       ;; but then this function must be on a hook *in :init*.
+       'org-mode
+       ;; This version suggested by Google. Claude also suggested something similar.
+       '(("^\\([ \t]+\\)\\([-+*]\\|[0-9]+[.)]\\)[ \t]+"
+          (1 'fixed-pitch prepend)))
+       'append)
+      )
+    (my/org-fix-list-indentation-face)
+  )
+
+
 (defun +org-capture/open-frame-ms (&optional initial-input key)
   "Opens the org-capture window in the current frame, closing it once
 you're done. This can be called from an external script on Windows."
