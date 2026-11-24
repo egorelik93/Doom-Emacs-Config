@@ -697,7 +697,7 @@ THRESHOLD defaults to 50."
     ;;  (setq-local temporary-file-directory (concat "//wsl.localhost/" distro "/tmp/")))
 
     (advice-add 'org-latex-preview--create-image-async :before
-                (defun my-org-latex-preview--lazy-initialize-autoloads ()
+                (defun my-org-latex-preview--lazy-initialize-autoloads (&rest _)
                   (unless my-org-latex-preview--autoloads-initialized
                     (my-initialize-org-latex-preview-autoloads)
                     (setq my-org-latex-preview--autoloads-initialized t)
