@@ -62,6 +62,28 @@ are open."
 (when (and (boundp '+doom-quit-messages) (not confirm-kill-emacs))
   (add-hook! kill-emacs-query-functions #'my-noask-quit-message))
 
+;; Suggested by Google.
+;; org-persist-write-all can hang on exit when multiple emacs
+;; instances are open on Windows, since Windows locks files.
+;; This solution only calls org-persist-write-all if any org buffers
+;; are open, along with some other protections to avoid hanging.
+(when (featurep :system 'windows)
+  (defadvice! +org-persist-safe-write-a (fn &rest args)
+    :around #'org-persist-write-all
+    (when (cl-some (lambda (buf)
+                     (with-current-buffer buf
+                       (derived-mode-p 'org-mode)))
+                   (buffer-list))
+      (let ((lock (expand-file-name "org-persist.lock" temporary-file-directory)))
+        (if (file-exists-p lock)
+            (message "Another Emacs instance is writing org-persist; skipping.")
+          (unwind-protect
+              (progn
+                (write-region "" nil lock nil 'silent)
+                (with-timeout (2 (message "org-persist-write-all timed out; skipping."))
+                  (apply fn args)))
+            (ignore-errors (delete-file lock))))))))
+
 
 ; Doom apparently sets the default scratch to Fundamental for faster loading,
 ; compared to the emacs default of lisp.
