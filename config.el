@@ -144,6 +144,19 @@ are open."
 (load! "+themes")
 
 
+(setq doom-modeline-window-width-limit 100)
+(setq doom-modeline-buffer-file-name-style 'truncate-with-project)
+
+(use-package! breadcrumb
+  :defer t
+  ;; Needs to be after the mode, not the hook,
+  ;; for my-tabline to load in time.
+  :after-call centaur-tabs-mode
+  :config
+  (require 'my-tabline)
+  )
+
+
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/org/")

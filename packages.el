@@ -138,6 +138,8 @@
 
 (package! mixed-pitch)
 
+(package! breadcrumb)
+
 
 ;; Enable these where using email.
 (my-package-default-disable! ebdb)
